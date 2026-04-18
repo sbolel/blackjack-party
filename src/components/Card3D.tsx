@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect, useState } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Card } from '@/lib/types'
@@ -88,11 +88,6 @@ function createBackTexture(): THREE.CanvasTexture {
 export function Card3D({ card, position, rotation = [0, 0, 0], faceUp }: Card3DProps) {
   const meshRef = useRef<THREE.Group>(null)
   const targetRotation = useRef(faceUp ? 0 : Math.PI)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   useEffect(() => {
     targetRotation.current = faceUp ? 0 : Math.PI
@@ -108,15 +103,11 @@ export function Card3D({ card, position, rotation = [0, 0, 0], faceUp }: Card3DP
     }
   })
 
-  const cardTexture = useMemo(() => createCardTexture(card), [card])
+  const cardTexture = useMemo(() => createCardTexture(card), [card.id])
   const backTexture = useMemo(() => createBackTexture(), [])
 
-  if (!mounted || !cardTexture || !backTexture) {
-    return null
-  }
-
   return (
-    <group ref={meshRef} position={position} rotation={rotation}>
+    <group ref={meshRef} position={[...position]} rotation={[...rotation]}>
       <mesh castShadow receiveShadow>
         <boxGeometry args={[1.8, 2.5, 0.05]} />
         <meshStandardMaterial color="#FFFFFF" />
@@ -124,12 +115,12 @@ export function Card3D({ card, position, rotation = [0, 0, 0], faceUp }: Card3DP
       
       <mesh position={[0, 0, 0.026]}>
         <planeGeometry args={[1.75, 2.45]} />
-        <meshBasicMaterial map={cardTexture} transparent />
+        <meshBasicMaterial map={cardTexture} transparent={true} />
       </mesh>
       
       <mesh position={[0, 0, -0.026]} rotation={[0, Math.PI, 0]}>
         <planeGeometry args={[1.75, 2.45]} />
-        <meshBasicMaterial map={backTexture} transparent />
+        <meshBasicMaterial map={backTexture} transparent={true} />
       </mesh>
     </group>
   )
