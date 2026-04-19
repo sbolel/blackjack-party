@@ -1,14 +1,13 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { GameTable3D } from './components/GameTable3D'
 import { PlayerCard } from './components/PlayerCard'
 import { GameControls } from './components/GameControls'
+import { GameSetup } from './components/GameSetup'
+import { LobbyWaiting } from './components/LobbyWaiting'
 import { Button } from './components/ui/button'
-import { Input } from './components/ui/input'
-import { Card } from './components/ui/card'
 import { Badge } from './components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select'
 import { GameState, Player } from './lib/types'
 import { 
   createDeck, 
@@ -19,24 +18,44 @@ import {
   shouldDealerHit,
   determineWinner,
   calculatePayout,
-  generateRoomId
+  generateRoomId,
+  generatePlayerId
 } from './lib/gameLogic'
-import { Users, SignOut } from '@phosphor-icons/react'
+import { SignOut, WifiHigh } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import { useGameSync } from './hooks/useGameSync'
+
+type AppPhase = 'setup' | 'lobby' | 'game'
 
 function App() {
-  const [gameStarted, setGameStarted] = useState(false)
+  const [appPhase, setAppPhase] = useState<AppPhase>('setup')
   const [gameState, setGameState] = useKV<GameState | null>('blackjack-game', null)
   const [currentPlayerId, setCurrentPlayerId] = useKV<string>('current-player-id', '')
-  const [showSetup, setShowSetup] = useState(true)
-  const [playerNames, setPlayerNames] = useState(['Player 1', 'Player 2'])
-  const [numPlayers, setNumPlayers] = useState('2')
+  const [roomName, setRoomName] = useState('')
+  const [isHost, setIsHost] = useState(false)
+  
+  const isOnlineMode = gameState?.isOnline || false
+  
+  const { publishState } = useGameSync({
+    roomId: gameState?.roomId || '',
+    playerId: currentPlayerId || '',
+    onStateUpdate: (newState) => {
+      if (isOnlineMode && gameState?.roomId === newState.roomId) {
+        setGameState(newState)
+      }
+    },
+    enabled: isOnlineMode
+  })
 
-  const startNewGame = () => {
-    const playerCount = parseInt(numPlayers)
-    const names = playerNames.slice(0, playerCount)
-    
-    const players: Player[] = names.map(name => createPlayer(name, 500))
+  const startLocalGame = useCallback((config: {
+    numPlayers: number
+    playerNames: string[]
+    startingChips: number
+    minBet: number
+  }) => {
+    const players: Player[] = config.playerNames.map(name => 
+      createPlayer(name, config.startingChips)
+    )
     
     const newGame: GameState = {
       roomId: generateRoomId(),
@@ -47,20 +66,139 @@ function App() {
       dealerHand: [],
       dealerRevealed: false,
       roundNumber: 1,
-      maxPlayers: playerCount,
+      maxPlayers: config.numPlayers,
       isOnline: false,
-      startingChips: 500,
-      minBet: 10
+      startingChips: config.startingChips,
+      minBet: config.minBet
     }
     
     setGameState(newGame)
     setCurrentPlayerId(players[0].id)
-    setGameStarted(true)
-    setShowSetup(false)
-    toast.success('Game started! Place your bets.')
-  }
+    setAppPhase('game')
+    toast.success('Local game started! Place your bets.')
+  }, [setGameState, setCurrentPlayerId])
 
-  const handleBet = (amount: number) => {
+  const createOnlineRoom = useCallback(async (config: {
+    roomName: string
+    maxPlayers: number
+    startingChips: number
+    minBet: number
+  }) => {
+    const roomId = generateRoomId()
+    const playerId = generatePlayerId()
+    const user = await spark.user()
+    const playerName = user.login || 'Host'
+    
+    const player = createPlayer(playerName, config.startingChips)
+    player.id = playerId
+    
+    const newGame: GameState = {
+      roomId,
+      players: [player],
+      deck: createDeck(),
+      currentPlayerIndex: 0,
+      phase: 'lobby',
+      dealerHand: [],
+      dealerRevealed: false,
+      roundNumber: 1,
+      maxPlayers: config.maxPlayers,
+      isOnline: true,
+      startingChips: config.startingChips,
+      minBet: config.minBet
+    }
+    
+    await spark.kv.set(`game-room-${roomId}`, newGame)
+    await spark.kv.set(`room-meta-${roomId}`, {
+      roomName: config.roomName,
+      createdAt: Date.now()
+    })
+    
+    setGameState(newGame)
+    setCurrentPlayerId(playerId)
+    setRoomName(config.roomName)
+    setIsHost(true)
+    setAppPhase('lobby')
+    toast.success(`Room created! Code: ${roomId}`)
+  }, [setGameState, setCurrentPlayerId])
+
+  const joinOnlineRoom = useCallback(async (roomId: string, playerName: string) => {
+    try {
+      const existingGame = await spark.kv.get<GameState>(`game-room-${roomId}`)
+      
+      if (!existingGame) {
+        toast.error('Room not found')
+        return
+      }
+      
+      if (existingGame.phase !== 'lobby') {
+        toast.error('Game already in progress')
+        return
+      }
+      
+      if (existingGame.players.length >= existingGame.maxPlayers) {
+        toast.error('Room is full')
+        return
+      }
+      
+      const playerId = generatePlayerId()
+      const newPlayer = createPlayer(playerName, existingGame.startingChips)
+      newPlayer.id = playerId
+      
+      const updatedGame: GameState = {
+        ...existingGame,
+        players: [...existingGame.players, newPlayer]
+      }
+      
+      await spark.kv.set(`game-room-${roomId}`, updatedGame)
+      
+      const roomMeta = await spark.kv.get<{ roomName: string }>(`room-meta-${roomId}`)
+      
+      setGameState(updatedGame)
+      setCurrentPlayerId(playerId)
+      setRoomName(roomMeta?.roomName || 'Game Room')
+      setIsHost(false)
+      setAppPhase('lobby')
+      toast.success('Joined room successfully!')
+    } catch (error) {
+      toast.error('Failed to join room')
+      console.error(error)
+    }
+  }, [setGameState, setCurrentPlayerId])
+
+  const startOnlineGame = useCallback(async () => {
+    if (!gameState || !isHost) return
+    
+    const updatedGame: GameState = {
+      ...gameState,
+      phase: 'betting',
+      currentPlayerIndex: 0
+    }
+    
+    setGameState(updatedGame)
+    await publishState(updatedGame)
+    setAppPhase('game')
+    toast.success('Game started! Place your bets.')
+  }, [gameState, isHost, setGameState, publishState])
+
+  const leaveGame = useCallback(async () => {
+    if (gameState?.isOnline && gameState.roomId) {
+      await spark.kv.delete(`player-status-${gameState.roomId}-${currentPlayerId}`)
+      
+      if (isHost) {
+        await spark.kv.delete(`game-room-${gameState.roomId}`)
+        await spark.kv.delete(`room-meta-${gameState.roomId}`)
+      }
+    }
+    
+    setGameState(null)
+    setCurrentPlayerId('')
+    setAppPhase('setup')
+    setIsHost(false)
+    setRoomName('')
+    toast.info('Left the game')
+  }, [gameState, currentPlayerId, isHost, setGameState, setCurrentPlayerId])
+
+  const handleBet = useCallback((amount: number) => {
     if (!gameState) return
 
     setGameState((current) => {
@@ -79,26 +217,34 @@ function App() {
 
       const allBetsPlaced = updatedPlayers.every(p => p.currentBet > 0)
       
+      const newState = { 
+        ...current, 
+        players: updatedPlayers, 
+        phase: allBetsPlaced ? ('dealing' as const) : current.phase
+      }
+      
+      if (current.isOnline) {
+        publishState(newState)
+      }
+      
       if (allBetsPlaced) {
         setTimeout(() => dealInitialCards(), 500)
-        return { ...current, players: updatedPlayers, phase: 'dealing' as const }
+      } else {
+        const nextPlayerIndex = updatedPlayers.findIndex((p, idx) => 
+          idx > current.currentPlayerIndex && p.currentBet === 0
+        )
+        if (nextPlayerIndex !== -1) {
+          setCurrentPlayerId(updatedPlayers[nextPlayerIndex].id)
+        }
       }
 
-      const nextPlayerIndex = updatedPlayers.findIndex((p, idx) => 
-        idx > current.currentPlayerIndex && p.currentBet === 0
-      )
-
-      if (nextPlayerIndex !== -1) {
-        setCurrentPlayerId(updatedPlayers[nextPlayerIndex].id)
-      }
-
-      return { ...current, players: updatedPlayers, currentPlayerIndex: nextPlayerIndex !== -1 ? nextPlayerIndex : current.currentPlayerIndex }
+      return newState
     })
-  }
+  }, [gameState, currentPlayerId, setGameState, publishState, setCurrentPlayerId])
 
-  const dealInitialCards = () => {
+  const dealInitialCards = useCallback(() => {
     setGameState((current) => {
-      if (!current || current.phase !== 'dealing') return null
+      if (!current || current.phase !== 'dealing') return current || null
 
       let deck = [...current.deck]
       const updatedPlayers = current.players.map(p => {
@@ -117,7 +263,7 @@ function App() {
 
       setCurrentPlayerId(updatedPlayers[0].id)
 
-      return {
+      const newState = {
         ...current,
         players: updatedPlayers,
         deck,
@@ -125,10 +271,16 @@ function App() {
         phase: 'playing' as const,
         currentPlayerIndex: 0
       }
-    })
-  }
+      
+      if (current.isOnline) {
+        publishState(newState)
+      }
 
-  const handleHit = () => {
+      return newState
+    })
+  }, [setGameState, publishState, setCurrentPlayerId])
+
+  const handleHit = useCallback(() => {
     if (!gameState) return
 
     setGameState((current) => {
@@ -157,11 +309,17 @@ function App() {
         setTimeout(() => moveToNextPlayer(), 1000)
       }
 
-      return { ...current, players: updatedPlayers, deck }
-    })
-  }
+      const newState = { ...current, players: updatedPlayers, deck }
+      
+      if (current.isOnline) {
+        publishState(newState)
+      }
 
-  const handleStand = () => {
+      return newState
+    })
+  }, [gameState, currentPlayerId, setGameState, publishState])
+
+  const handleStand = useCallback(() => {
     if (!gameState) return
 
     setGameState((current) => {
@@ -174,13 +332,19 @@ function App() {
         return p
       })
 
-      return { ...current, players: updatedPlayers }
+      const newState = { ...current, players: updatedPlayers }
+      
+      if (current.isOnline) {
+        publishState(newState)
+      }
+
+      return newState
     })
 
     setTimeout(() => moveToNextPlayer(), 500)
-  }
+  }, [gameState, currentPlayerId, setGameState, publishState])
 
-  const moveToNextPlayer = () => {
+  const moveToNextPlayer = useCallback(() => {
     if (!gameState) return
 
     const nextPlayerIndex = gameState.players.findIndex((p, idx) => 
@@ -190,18 +354,29 @@ function App() {
 
     if (nextPlayerIndex === -1) {
       setTimeout(() => playDealerTurn(), 500)
-      setGameState((current) => current ? { ...current, phase: 'dealer-turn' as const } : null)
+      setGameState((current) => {
+        if (!current) return null
+        const newState = { ...current, phase: 'dealer-turn' as const }
+        if (current.isOnline) publishState(newState)
+        return newState
+      })
     } else {
       setCurrentPlayerId(gameState.players[nextPlayerIndex].id)
-      setGameState((current) => current ? { ...current, currentPlayerIndex: nextPlayerIndex } : null)
+      setGameState((current) => {
+        if (!current) return null
+        const newState = { ...current, currentPlayerIndex: nextPlayerIndex }
+        if (current.isOnline) publishState(newState)
+        return newState
+      })
     }
-  }
+  }, [gameState, setGameState, publishState, setCurrentPlayerId])
 
-  const playDealerTurn = () => {
+  const playDealerTurn = useCallback(() => {
     setGameState((current) => {
       if (!current) return null
-      
-      return { ...current, dealerRevealed: true }
+      const newState = { ...current, dealerRevealed: true }
+      if (current.isOnline) publishState(newState)
+      return newState
     })
 
     setTimeout(() => {
@@ -216,14 +391,16 @@ function App() {
           dealerHand.push(newCard)
         }
 
-        return { ...current, dealerHand, deck }
+        const newState = { ...current, dealerHand, deck }
+        if (current.isOnline) publishState(newState)
+        return newState
       })
 
       setTimeout(() => determineResults(), 1500)
     }, 1000)
-  }
+  }, [setGameState, publishState])
 
-  const determineResults = () => {
+  const determineResults = useCallback(() => {
     if (!gameState) return
 
     setGameState((current) => {
@@ -249,20 +426,31 @@ function App() {
         }
       })
 
-      return { ...current, players: updatedPlayers, phase: 'results' as const }
+      const newState = { ...current, players: updatedPlayers, phase: 'results' as const }
+      
+      if (current.isOnline) {
+        publishState(newState)
+      }
+
+      return newState
     })
 
     toast.success('Round complete!')
-  }
+  }, [gameState, setGameState, publishState])
 
-  const handleNextRound = () => {
+  const handleNextRound = useCallback(() => {
     if (!gameState) return
 
     const activePlayers = gameState.players.filter(p => p.chips >= gameState.minBet)
     
     if (activePlayers.length === 0) {
       toast.error('Game Over! No players have enough chips.')
-      setGameState((current) => current ? { ...current, phase: 'game-over' as const } : null)
+      setGameState((current) => {
+        if (!current) return null
+        const newState = { ...current, phase: 'game-over' as const }
+        if (current.isOnline) publishState(newState)
+        return newState
+      })
       return
     }
 
@@ -278,7 +466,7 @@ function App() {
 
       const newDeck = current.deck.length < 20 ? createDeck() : current.deck
 
-      return {
+      const newState = {
         ...current,
         players: updatedPlayers,
         deck: newDeck,
@@ -288,116 +476,70 @@ function App() {
         currentPlayerIndex: 0,
         roundNumber: current.roundNumber + 1
       }
+      
+      if (current.isOnline) {
+        publishState(newState)
+      }
+
+      return newState
     })
 
     setCurrentPlayerId(activePlayers[0].id)
     toast.info('New round! Place your bets.')
-  }
+  }, [gameState, setGameState, publishState, setCurrentPlayerId])
 
-  const handleLeaveGame = () => {
-    setGameState(null)
-    setGameStarted(false)
-    setShowSetup(true)
-    setCurrentPlayerId('')
-    toast.info('Left the game')
-  }
-
-  const updatePlayerName = (index: number, name: string) => {
-    setPlayerNames(prev => {
-      const newNames = [...prev]
-      newNames[index] = name || `Player ${index + 1}`
-      return newNames
-    })
-  }
-
-  const handleNumPlayersChange = (value: string) => {
-    setNumPlayers(value)
-    const count = parseInt(value)
-    setPlayerNames(prev => {
-      const newNames = [...prev]
-      while (newNames.length < count) {
-        newNames.push(`Player ${newNames.length + 1}`)
-      }
-      return newNames.slice(0, count)
-    })
-  }
-
-  if (showSetup || !gameStarted || !gameState) {
+  if (appPhase === 'setup') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <Card className="w-full max-w-2xl p-8">
-          <div className="text-center space-y-6">
-            <div>
-              <h1 className="text-5xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Blackjack 3D
-              </h1>
-              <p className="text-muted-foreground text-lg">
-                Experience casino blackjack with immersive 3D graphics
-              </p>
-            </div>
-
-            <div className="space-y-4 text-left">
-              <div>
-                <label className="text-sm font-semibold mb-2 block">Number of Players</label>
-                <Select value={numPlayers} onValueChange={handleNumPlayersChange}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2">2 Players</SelectItem>
-                    <SelectItem value="3">3 Players</SelectItem>
-                    <SelectItem value="4">4 Players</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-sm font-semibold mb-2 block">Player Names</label>
-                <div className="space-y-2">
-                  {playerNames.map((name, index) => (
-                    <Input
-                      key={index}
-                      value={name}
-                      onChange={(e) => updatePlayerName(index, e.target.value)}
-                      placeholder={`Player ${index + 1}`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-muted p-4 rounded-lg text-sm space-y-1">
-                <p><strong>Starting Chips:</strong> 500</p>
-                <p><strong>Minimum Bet:</strong> 10</p>
-                <p><strong>Game Mode:</strong> Local (Hot-seat)</p>
-              </div>
-            </div>
-
-            <Button onClick={startNewGame} size="lg" className="w-full">
-              <Users size={20} weight="bold" className="mr-2" />
-              Start Game
-            </Button>
-          </div>
-        </Card>
-      </div>
+      <GameSetup
+        onStartLocal={startLocalGame}
+        onCreateOnline={createOnlineRoom}
+        onJoinOnline={joinOnlineRoom}
+      />
     )
   }
 
+  if (appPhase === 'lobby' && gameState) {
+    return (
+      <LobbyWaiting
+        roomId={gameState.roomId}
+        roomName={roomName}
+        players={gameState.players}
+        maxPlayers={gameState.maxPlayers}
+        isHost={isHost}
+        onStartGame={startOnlineGame}
+        onLeave={leaveGame}
+      />
+    )
+  }
+
+  if (!gameState) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>
+  }
+
   const currentPlayer = gameState.players.find(p => p.id === currentPlayerId)
-  const isCurrentPlayer = !!currentPlayer
+  const isActivePlayer = gameState.players[gameState.currentPlayerIndex]?.id === currentPlayerId
 
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b border-border bg-card">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Blackjack 3D
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+                Blackjack 3D
+              </h1>
+              {gameState.isOnline && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <WifiHigh size={14} weight="bold" />
+                  Online
+                </Badge>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">
               Round {gameState.roundNumber} • Room {gameState.roomId}
             </p>
           </div>
-          <Button variant="outline" onClick={handleLeaveGame}>
+          <Button variant="outline" onClick={leaveGame}>
             <SignOut size={18} weight="bold" className="mr-2" />
             Leave Game
           </Button>
@@ -431,14 +573,14 @@ function App() {
           </div>
 
           <div className="space-y-4">
-            {isCurrentPlayer && currentPlayer && (
+            {currentPlayer && (
               <GameControls
                 onHit={handleHit}
                 onStand={handleStand}
                 onBet={handleBet}
                 onNextRound={handleNextRound}
                 phase={gameState.phase}
-                isActivePlayer={gameState.phase === 'playing' && gameState.players[gameState.currentPlayerIndex]?.id === currentPlayerId}
+                isActivePlayer={isActivePlayer}
                 currentBet={currentPlayer.currentBet}
                 availableChips={currentPlayer.chips}
                 minBet={gameState.minBet}
@@ -447,7 +589,7 @@ function App() {
 
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Players</h3>
-              {gameState.players.map((player, index) => (
+              {gameState.players.map((player) => (
                 <PlayerCard
                   key={player.id}
                   player={player}
@@ -466,7 +608,7 @@ function App() {
           </DialogHeader>
           <div className="space-y-4">
             <p>All players are out of chips!</p>
-            <Button onClick={handleLeaveGame} className="w-full">
+            <Button onClick={leaveGame} className="w-full">
               Return to Menu
             </Button>
           </div>

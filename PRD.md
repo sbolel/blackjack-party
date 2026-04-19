@@ -1,14 +1,14 @@
 # Planning Guide
 
-A multiplayer 3D blackjack game that supports both real-time online play and local hot-seat mode, featuring an immersive overhead table view with 3D card rendering.
+A multiplayer 3D blackjack game that supports both real-time online play and local hot-seat mode, featuring an immersive overhead table view with 3D card rendering and synchronized game states across connected players.
 
 **Experience Qualities**: 
 1. **Immersive** - The 3D perspective and camera angle create the feeling of sitting at a real casino table, with depth and spatial awareness.
-2. **Social** - Players can compete together whether online or locally, with clear visual feedback showing all players' actions and game state.
-3. **Polished** - Smooth card animations, clear betting controls, and intuitive game flow make the experience feel professional and casino-quality.
+2. **Social** - Players can compete together whether online or locally, with clear visual feedback showing all players' actions and game state in real-time.
+3. **Polished** - Smooth card animations, clear betting controls, intuitive game flow, and seamless multiplayer synchronization make the experience feel professional and casino-quality.
 
 **Complexity Level**: Complex Application (advanced functionality, likely with multiple views)
-  - This is a complex application requiring real-time multiplayer synchronization, 3D graphics rendering, game state management across multiple players, lobby/game room systems, and sophisticated UI for both gameplay and room management.
+  - This is a complex application featuring real-time multiplayer synchronization via Spark KV store, 3D graphics rendering using Three.js, game state management across multiple players, lobby/room systems with join codes, and sophisticated UI for both gameplay and room management with polling-based state sync.
 
 ## Essential Features
 
