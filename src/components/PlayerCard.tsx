@@ -58,10 +58,13 @@ export function PlayerCard({ player, isActive, isDealer }: PlayerCardProps) {
     <Card
       className={cn(
         'p-4 transition-all duration-300',
-        isActive && 'ring-2 ring-gold shadow-lg shadow-gold/50',
+        isActive && 'ring-2 ring-gold',
         player.status === 'won' && 'ring-2 ring-gold',
         player.status === 'lost' && 'opacity-60'
       )}
+      style={isActive ? {
+        boxShadow: '0 10px 15px -3px rgba(218, 165, 32, 0.3), 0 4px 6px -4px rgba(218, 165, 32, 0.3), 0 0 20px rgba(218, 165, 32, 0.4)'
+      } : undefined}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
