@@ -34,15 +34,15 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
   
   const [roomName, setRoomName] = useKV<string>('setup-room-name', '')
   const [maxPlayers, setMaxPlayers] = useKV<string>('setup-max-players', '4')
-  const [joinRoomId, setJoinRoomId] = useKV<string>('setup-join-room-id', '')
-  const [joinPlayerName, setJoinPlayerName] = useKV<string>('setup-join-player-name', '')
+  const [joinRoomId, setJoinRoomId] = useKV('setup-join-room-id', '')
+  const [joinPlayerName, setJoinPlayerName] = useKV('setup-join-player-name', '')
 
   const updatePlayerName = (index: number, name: string) => {
     setPlayerNames((currentNames) => {
-      const names = currentNames || ['Player 1', 'Player 2']
-      const newNames = [...names]
+      const newNames = [...currentNames]
       newNames[index] = name
       return newNames
+    })
     })
   }
 
