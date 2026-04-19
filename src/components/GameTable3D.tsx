@@ -52,8 +52,6 @@ function HandValueDisplay({ hand, revealed = true }: HandValueDisplayProps) {
   const [showSparkles, setShowSparkles] = useState(false)
   const [previousValue, setPreviousValue] = useState<number | null>(null)
 
-  if (!revealed || hand.length === 0) return null
-
   const { low, high, hasAce } = calculateHandValues(hand)
   const displayValue = low
   const isBust = low > 21
@@ -67,6 +65,8 @@ function HandValueDisplay({ hand, revealed = true }: HandValueDisplayProps) {
     }
     setPreviousValue(displayValue)
   }, [isBlackjack, displayValue, previousValue])
+
+  if (!revealed || hand.length === 0) return null
 
   const getValueColor = (value: number) => {
     if (value > 21) return 'text-red-500'
