@@ -114,4 +114,3 @@ export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayer
       </div>
     </div>
   )
-}
