@@ -41,3 +41,42 @@ export interface RoomConfig {
   startingChips: number
   minBet: number
 }
+
+export interface BetHistoryEntry {
+  id: string
+  playerId: string
+  playerName: string
+  roomId: string
+  roundNumber: number
+  betAmount: number
+  result: 'won' | 'lost' | 'push' | 'blackjack'
+  payout: number
+  profit: number
+  playerHandValue: number
+  dealerHandValue: number
+  timestamp: number
+  isBlackjack: boolean
+}
+
+export interface PlayerStatistics {
+  playerId: string
+  playerName: string
+  totalBets: number
+  totalWagered: number
+  totalWon: number
+  totalLost: number
+  netProfit: number
+  wins: number
+  losses: number
+  pushes: number
+  blackjacks: number
+  winRate: number
+  biggestWin: number
+  biggestLoss: number
+  averageBet: number
+  currentStreak: number
+  longestWinStreak: number
+  longestLossStreak: number
+  firstBet: number
+  lastBet: number
+}

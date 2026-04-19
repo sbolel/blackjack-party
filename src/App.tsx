@@ -5,10 +5,11 @@ import { PlayerCard } from './components/PlayerCard'
 import { GameControls } from './components/GameControls'
 import { GameSetup } from './components/GameSetup'
 import { LobbyWaiting } from './components/LobbyWaiting'
+import { AnalyticsDashboard } from './components/AnalyticsDashboard'
 import { Button } from './components/ui/button'
 import { Badge } from './components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog'
-import { GameState, Player } from './lib/types'
+import { GameState, Player, BetHistoryEntry } from './lib/types'
 import { 
   createDeck, 
   createPlayer, 
@@ -21,16 +22,17 @@ import {
   generateRoomId,
   generatePlayerId
 } from './lib/gameLogic'
-import { SignOut, WifiHigh } from '@phosphor-icons/react'
+import { SignOut, WifiHigh, ChartLine } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useGameSync } from './hooks/useGameSync'
 
-type AppPhase = 'setup' | 'lobby' | 'game'
+type AppPhase = 'setup' | 'lobby' | 'game' | 'analytics'
 
 function App() {
   const [appPhase, setAppPhase] = useState<AppPhase>('setup')
   const [gameState, setGameState] = useKV<GameState | null>('blackjack-game', null)
   const [currentPlayerId, setCurrentPlayerId] = useKV<string>('current-player-id', '')
+  const [betHistory, setBetHistory] = useKV<BetHistoryEntry[]>('bet-history', [])
   const [roomName, setRoomName] = useState('')
   const [isHost, setIsHost] = useState(false)
   
@@ -435,8 +437,41 @@ function App() {
       return newState
     })
 
+    if (gameState) {
+      const newEntries: BetHistoryEntry[] = gameState.players.map(p => {
+        const isBustStatus = p.status === 'bust'
+        const result = isBustStatus ? 'lose' : determineWinner(p.hand, gameState.dealerHand)
+        const payout = calculatePayout(p.currentBet, result, isBlackjack(p.hand))
+        const profit = payout - p.currentBet
+        
+        let betResult: 'won' | 'lost' | 'push' | 'blackjack'
+        if (isBustStatus) betResult = 'lost'
+        else if (result === 'win') betResult = isBlackjack(p.hand) ? 'blackjack' : 'won'
+        else if (result === 'lose') betResult = 'lost'
+        else betResult = 'push'
+
+        return {
+          id: `${gameState.roomId}-${gameState.roundNumber}-${p.id}`,
+          playerId: p.id,
+          playerName: p.name,
+          roomId: gameState.roomId,
+          roundNumber: gameState.roundNumber,
+          betAmount: p.currentBet,
+          result: betResult,
+          payout,
+          profit,
+          playerHandValue: calculateHandValue(p.hand),
+          dealerHandValue: calculateHandValue(gameState.dealerHand),
+          timestamp: Date.now(),
+          isBlackjack: isBlackjack(p.hand)
+        }
+      })
+
+      setBetHistory((current) => [...(current || []), ...newEntries])
+    }
+
     toast.success('Round complete!')
-  }, [gameState, setGameState, publishState])
+  }, [gameState, setGameState, publishState, setBetHistory])
 
   const handleNextRound = useCallback(() => {
     if (!gameState) return
@@ -498,6 +533,15 @@ function App() {
     )
   }
 
+  if (appPhase === 'analytics') {
+    return (
+      <AnalyticsDashboard
+        currentPlayerId={currentPlayerId || ''}
+        onClose={() => setAppPhase('game')}
+      />
+    )
+  }
+
   if (appPhase === 'lobby' && gameState) {
     return (
       <LobbyWaiting
@@ -539,10 +583,16 @@ function App() {
               Round {gameState.roundNumber} • Room {gameState.roomId}
             </p>
           </div>
-          <Button variant="outline" onClick={leaveGame}>
-            <SignOut size={18} weight="bold" className="mr-2" />
-            Leave Game
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={() => setAppPhase('analytics')}>
+              <ChartLine size={18} weight="bold" className="mr-2" />
+              Analytics
+            </Button>
+            <Button variant="outline" onClick={leaveGame}>
+              <SignOut size={18} weight="bold" className="mr-2" />
+              Leave Game
+            </Button>
+          </div>
         </div>
       </div>
 

@@ -54,6 +54,13 @@ A multiplayer 3D blackjack game that supports both real-time online play and loc
 - **Progression**: Players start with initial chips → Bet amounts deducted → Wins/losses calculated → Chips added/removed → Players eliminated when chips reach zero
 - **Success criteria**: Chip counts accurate, betting limits enforced, proper win/loss payouts
 
+### 7. Betting History & Analytics Dashboard
+- **Functionality**: Track all bets placed, results, and display comprehensive statistics and performance analytics
+- **Purpose**: Provide players with insights into their gambling patterns, win rates, and long-term performance
+- **Trigger**: Automatically tracks every bet; dashboard accessed via Analytics button
+- **Progression**: Bet placed and result determined → Entry saved to history → Analytics calculated → Dashboard displays overview, detailed history, and trends
+- **Success criteria**: All bets accurately tracked, statistics calculated correctly, dashboard displays meaningful insights including net profit, win rate, streaks, biggest wins/losses, and daily trends
+
 ## Edge Case Handling
 
 - **Player Disconnection**: When a player disconnects mid-game, their hand automatically stands and they're marked as inactive; game continues for remaining players
