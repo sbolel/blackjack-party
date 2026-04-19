@@ -22,4 +22,25 @@ export default defineConfig({
       '@': resolve(projectRoot, 'src')
     }
   },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-dom/client',
+      'react-error-boundary',
+      'sonner',
+      'framer-motion',
+      '@phosphor-icons/react',
+      'lucide-react',
+    ],
+    force: true,
+  },
+  server: {
+    warmup: {
+      clientFiles: [
+        './src/main.tsx',
+        './src/App.tsx',
+      ]
+    }
+  }
 });
