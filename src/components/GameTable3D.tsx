@@ -51,7 +51,7 @@ export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayer
           <meshStandardMaterial color="#2d5a3d" />
         </mesh>
 
-        {dealerHand.map((card, index) => (
+        {dealerHand && dealerHand.filter(card => card && card.id).map((card, index) => (
           <Card3D
             key={card.id}
             card={card}
@@ -60,13 +60,13 @@ export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayer
           />
         ))}
 
-        {players.map((player, playerIndex) => {
+        {players && players.filter(p => p && p.id).map((player, playerIndex) => {
           const playerPos = getPlayerPosition(playerIndex, players.length)
           const isCurrentPlayer = player.id === currentPlayerId
 
           return (
             <group key={player.id}>
-              {player.hand.map((card, cardIndex) => (
+              {player.hand && player.hand.filter(card => card && card.id).map((card, cardIndex) => (
                 <Card3D
                   key={card.id}
                   card={card}

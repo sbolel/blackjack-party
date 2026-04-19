@@ -1,7 +1,7 @@
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Card } from '@/lib/types'
+import type { Card } from '@/lib/types'
 import { getCardSymbol, getCardColor } from '@/lib/gameLogic'
 
 interface Card3DProps {
@@ -103,20 +103,28 @@ export function Card3D({ card, position, rotation = [0, 0, 0], faceUp }: Card3DP
     }
   })
 
-  const cardTexture = useMemo(() => createCardTexture(card), [card.id])
+  const cardTexture = useMemo(() => {
+    if (!card) return null
+    return createCardTexture(card)
+  }, [card?.id, card?.rank, card?.suit])
+  
   const backTexture = useMemo(() => createBackTexture(), [])
 
+  if (!card) return null
+
   return (
-    <group ref={meshRef} position={[...position]} rotation={[...rotation]}>
+    <group ref={meshRef} position={position} rotation={rotation}>
       <mesh castShadow receiveShadow>
         <boxGeometry args={[1.8, 2.5, 0.05]} />
         <meshStandardMaterial color="#FFFFFF" />
       </mesh>
       
-      <mesh position={[0, 0, 0.026]}>
-        <planeGeometry args={[1.75, 2.45]} />
-        <meshBasicMaterial map={cardTexture} transparent={true} />
-      </mesh>
+      {cardTexture && (
+        <mesh position={[0, 0, 0.026]}>
+          <planeGeometry args={[1.75, 2.45]} />
+          <meshBasicMaterial map={cardTexture} transparent={true} />
+        </mesh>
+      )}
       
       <mesh position={[0, 0, -0.026]} rotation={[0, Math.PI, 0]}>
         <planeGeometry args={[1.75, 2.45]} />
