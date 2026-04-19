@@ -639,13 +639,6 @@ function App() {
                   />
                 )}
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <Dialog open={gameState.phase === 'game-over'}>
-        <DialogContent>
           <DialogHeader>
             <DialogTitle>Game Over</DialogTitle>
           </DialogHeader>
