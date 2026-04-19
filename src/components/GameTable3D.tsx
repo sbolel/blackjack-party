@@ -19,13 +19,16 @@ export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayer
     return [x, -0.5, z]
   }
 
-  const getDealerCardPosition = (index: number): [number, number, number] => {
-    return [-dealerHand.length * 1 + index * 2, -0.5, -6]
+  const getDealerCardPosition = (index: number, totalCards: number): [number, number, number] => {
+    return [-totalCards * 1 + index * 2, -0.5, -6]
   }
 
   const getPlayerCardPosition = (playerPos: [number, number, number], cardIndex: number): [number, number, number] => {
     return [playerPos[0] - 1 + cardIndex * 1, playerPos[1], playerPos[2]]
   }
+
+  const validDealerHand = Array.isArray(dealerHand) ? dealerHand.filter(card => card && card.id && card.suit && card.rank) : []
+  const validPlayers = Array.isArray(players) ? players.filter(p => p && p.id) : []
 
   return (
     <div className="w-full h-full">
@@ -51,24 +54,25 @@ export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayer
           <meshStandardMaterial color="#2d5a3d" />
         </mesh>
 
-        {dealerHand && dealerHand.filter(card => card && card.id).map((card, index) => (
+        {validDealerHand.map((card, index) => (
           <Card3D
-            key={card.id}
+            key={`${card.id}-${index}`}
             card={card}
-            position={getDealerCardPosition(index)}
+            position={getDealerCardPosition(index, validDealerHand.length)}
             faceUp={dealerRevealed || index === 0}
           />
         ))}
 
-        {players && players.filter(p => p && p.id).map((player, playerIndex) => {
-          const playerPos = getPlayerPosition(playerIndex, players.length)
+        {validPlayers.map((player, playerIndex) => {
+          const playerPos = getPlayerPosition(playerIndex, validPlayers.length)
           const isCurrentPlayer = player.id === currentPlayerId
+          const validPlayerHand = Array.isArray(player.hand) ? player.hand.filter(card => card && card.id && card.suit && card.rank) : []
 
           return (
             <group key={player.id}>
-              {player.hand && player.hand.filter(card => card && card.id).map((card, cardIndex) => (
+              {validPlayerHand.map((card, cardIndex) => (
                 <Card3D
-                  key={card.id}
+                  key={`${card.id}-${cardIndex}`}
                   card={card}
                   position={getPlayerCardPosition(playerPos, cardIndex)}
                   faceUp={true}

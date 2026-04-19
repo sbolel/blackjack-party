@@ -12,13 +12,17 @@ interface Card3DProps {
   onClick?: () => void
 }
 
-function createCardTexture(card: Card): THREE.CanvasTexture {
+function createCardTexture(card: Card | null | undefined): THREE.CanvasTexture | null {
+  if (!card || !card.suit || !card.rank) return null
+  
   const canvas = document.createElement('canvas')
   canvas.width = 256
   canvas.height = 358
   const ctx = canvas.getContext('2d')
   
-  if (ctx) {
+  if (!ctx) return null
+  
+  try {
     ctx.fillStyle = '#FFFFFF'
     ctx.fillRect(0, 0, 256, 358)
     
@@ -48,11 +52,14 @@ function createCardTexture(card: Card): THREE.CanvasTexture {
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText(symbol, 128, 179)
+    
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.needsUpdate = true
+    return texture
+  } catch (error) {
+    console.error('Error creating card texture:', error)
+    return null
   }
-  
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.needsUpdate = true
-  return texture
 }
 
 function createBackTexture(): THREE.CanvasTexture {
@@ -103,14 +110,10 @@ export function Card3D({ card, position, rotation = [0, 0, 0], faceUp }: Card3DP
     }
   })
 
-  const cardTexture = useMemo(() => {
-    if (!card) return null
-    return createCardTexture(card)
-  }, [card?.id, card?.rank, card?.suit])
-  
-  const backTexture = useMemo(() => createBackTexture(), [])
+  if (!card || !card.id || !card.suit || !card.rank) return null
 
-  if (!card) return null
+  const cardTexture = useMemo(() => createCardTexture(card), [card.id, card.rank, card.suit])
+  const backTexture = useMemo(() => createBackTexture(), [])
 
   return (
     <group ref={meshRef} position={position} rotation={rotation}>
@@ -126,10 +129,12 @@ export function Card3D({ card, position, rotation = [0, 0, 0], faceUp }: Card3DP
         </mesh>
       )}
       
-      <mesh position={[0, 0, -0.026]} rotation={[0, Math.PI, 0]}>
-        <planeGeometry args={[1.75, 2.45]} />
-        <meshBasicMaterial map={backTexture} transparent={true} />
-      </mesh>
+      {backTexture && (
+        <mesh position={[0, 0, -0.026]} rotation={[0, Math.PI, 0]}>
+          <planeGeometry args={[1.75, 2.45]} />
+          <meshBasicMaterial map={backTexture} transparent={true} />
+        </mesh>
+      )}
     </group>
   )
 }
