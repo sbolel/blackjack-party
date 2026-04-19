@@ -625,9 +625,9 @@ function App() {
           <div className="space-y-4">
             {currentPlayer && (
               <GameControls
-          <div className="space-y-4">
-            {currentPlayer && (
-              <GameControls
+                onBet={handleBet}
+                onHit={handleHit}
+                onStand={handleStand}
                 onNextRound={handleNextRound}
                 phase={gameState.phase}
                 isActivePlayer={isActivePlayer}
