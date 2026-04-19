@@ -115,9 +115,12 @@ export function Card3D({ card, position, rotation = [0, 0, 0], faceUp }: Card3DP
   const cardTexture = useMemo(() => createCardTexture(card), [card.id, card.rank, card.suit])
   const backTexture = useMemo(() => createBackTexture(), [])
 
+  const pos: [number, number, number] = [position[0], position[1], position[2]]
+  const rot: [number, number, number] = [rotation[0], rotation[1], rotation[2]]
+
   return (
-    <group ref={meshRef} position={position} rotation={rotation}>
-      <mesh castShadow receiveShadow>
+    <group ref={meshRef} position={pos} rotation={rot}>
+      <mesh castShadow={true} receiveShadow={true}>
         <boxGeometry args={[1.8, 2.5, 0.05]} />
         <meshStandardMaterial color="#FFFFFF" />
       </mesh>

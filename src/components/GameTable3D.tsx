@@ -54,7 +54,7 @@ export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayer
     <ErrorBoundary FallbackComponent={FallbackComponent}>
       <div className="w-full h-full">
         <Canvas>
-          <PerspectiveCamera makeDefault position={[0, 15, 0]} rotation={[-Math.PI / 2.5, 0, 0]} />
+          <PerspectiveCamera makeDefault={true} position={[0, 15, 0]} rotation={[-Math.PI / 2.5, 0, 0]} />
           <OrbitControls 
             enableRotate={false}
             enableZoom={false}
@@ -75,14 +75,17 @@ export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayer
             <meshStandardMaterial color="#2d5a3d" />
           </mesh>
 
-          {validDealerHand.map((card, index) => (
-            <Card3D
-              key={`dealer-${card.id}-${index}`}
-              card={card}
-              position={getDealerCardPosition(index, validDealerHand.length)}
-              faceUp={dealerRevealed || index === 0}
-            />
-          ))}
+          {validDealerHand.map((card, index) => {
+            const pos = getDealerCardPosition(index, validDealerHand.length)
+            return (
+              <Card3D
+                key={`dealer-${card.id}-${index}`}
+                card={card}
+                position={pos}
+                faceUp={dealerRevealed || index === 0}
+              />
+            )
+          })}
 
           {validPlayers.map((player, playerIndex) => {
             const playerPos = getPlayerPosition(playerIndex, validPlayers.length)
@@ -91,14 +94,17 @@ export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayer
 
             return (
               <group key={`player-${player.id}`}>
-                {validPlayerHand.map((card, cardIndex) => (
-                  <Card3D
-                    key={`player-${player.id}-${card.id}-${cardIndex}`}
-                    card={card}
-                    position={getPlayerCardPosition(playerPos, cardIndex)}
-                    faceUp={true}
-                  />
-                ))}
+                {validPlayerHand.map((card, cardIndex) => {
+                  const cardPos = getPlayerCardPosition(playerPos, cardIndex)
+                  return (
+                    <Card3D
+                      key={`player-${player.id}-${card.id}-${cardIndex}`}
+                      card={card}
+                      position={cardPos}
+                      faceUp={true}
+                    />
+                  )
+                })}
                 
                 {isCurrentPlayer && (
                   <mesh position={[playerPos[0], -0.8, playerPos[2]]}>
