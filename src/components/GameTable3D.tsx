@@ -1,6 +1,7 @@
 import { Player, Card } from '@/lib/types'
 import { getCardSymbol, getCardColor } from '@/lib/gameLogic'
 import { Badge } from './ui/badge'
+import { motion } from 'framer-motion'
 
 interface GameTable3DProps {
   players: Player[]
@@ -9,12 +10,21 @@ interface GameTable3DProps {
   currentPlayerId?: string
 }
 
-function PlayingCard({ card, faceUp }: { card: Card; faceUp: boolean }) {
+function PlayingCard({ card, faceUp, delay = 0 }: { card: Card; faceUp: boolean; delay?: number }) {
   if (!faceUp) {
     return (
-      <div className="w-16 h-24 rounded-lg bg-gradient-to-br from-blue-700 to-blue-900 border-2 border-gold flex items-center justify-center shadow-lg">
+      <motion.div
+        initial={{ rotateY: 180, scale: 0.8 }}
+        animate={{ rotateY: 0, scale: 1 }}
+        transition={{ duration: 0.4, delay }}
+        className="w-16 h-24 rounded-lg bg-gradient-to-br from-blue-700 to-blue-900 border-2 border-gold flex items-center justify-center shadow-2xl"
+        style={{
+          transformStyle: 'preserve-3d',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.5), 0 0 20px rgba(212,175,55,0.3)'
+        }}
+      >
         <div className="text-gold text-xl font-bold">♠♥♣♦</div>
-      </div>
+      </motion.div>
     )
   }
 
@@ -22,7 +32,16 @@ function PlayingCard({ card, faceUp }: { card: Card; faceUp: boolean }) {
   const color = getCardColor(card.suit)
 
   return (
-    <div className="w-16 h-24 rounded-lg bg-white border-2 border-gray-300 shadow-lg flex flex-col p-2">
+    <motion.div
+      initial={{ rotateY: 180, scale: 0.8, y: -50 }}
+      animate={{ rotateY: 0, scale: 1, y: 0 }}
+      transition={{ duration: 0.5, delay }}
+      className="w-16 h-24 rounded-lg bg-white border-2 border-gray-300 flex flex-col p-2"
+      style={{
+        transformStyle: 'preserve-3d',
+        boxShadow: '0 10px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)'
+      }}
+    >
       <div className="flex flex-col items-start">
         <span className="text-xs font-bold" style={{ color }}>
           {card.rank}
@@ -44,7 +63,7 @@ function PlayingCard({ card, faceUp }: { card: Card; faceUp: boolean }) {
           {symbol}
         </span>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -55,62 +74,139 @@ export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayer
 
   const validDealerHand = Array.isArray(dealerHand) ? dealerHand.filter(isValidCard) : []
 
+  const getPlayerPosition = (index: number, total: number) => {
+    if (total === 1) return { bottom: '10%', left: '50%', transform: 'translateX(-50%)' }
+    if (total === 2) {
+      return index === 0 
+        ? { bottom: '10%', left: '25%', transform: 'translateX(-50%)' }
+        : { bottom: '10%', left: '75%', transform: 'translateX(-50%)' }
+    }
+    if (total === 3) {
+      const positions = [
+        { bottom: '10%', left: '20%', transform: 'translateX(-50%)' },
+        { bottom: '10%', left: '50%', transform: 'translateX(-50%)' },
+        { bottom: '10%', left: '80%', transform: 'translateX(-50%)' }
+      ]
+      return positions[index]
+    }
+    const positions = [
+      { bottom: '10%', left: '15%', transform: 'translateX(-50%)' },
+      { bottom: '10%', left: '38%', transform: 'translateX(-50%)' },
+      { bottom: '10%', left: '62%', transform: 'translateX(-50%)' },
+      { bottom: '10%', left: '85%', transform: 'translateX(-50%)' }
+    ]
+    return positions[index]
+  }
+
   return (
-    <div className="w-full h-full bg-gradient-to-br from-green-800 via-green-900 to-green-950 rounded-lg p-8 flex flex-col items-center justify-between relative overflow-hidden">
-      <div 
-        className="absolute inset-0 opacity-10"
+    <div 
+      className="w-full h-full relative overflow-hidden rounded-lg"
+      style={{
+        perspective: '1200px',
+        perspectiveOrigin: '50% 30%'
+      }}
+    >
+      <div
+        className="w-full h-full absolute inset-0"
         style={{
-          backgroundImage: `repeating-radial-gradient(circle at 0 0, transparent 0, rgba(255,255,255,0.1) 10px, transparent 20px)`
+          transform: 'rotateX(25deg)',
+          transformStyle: 'preserve-3d'
         }}
-      />
-      
-      <div className="relative z-10 flex flex-col items-center gap-6">
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-xs">DEALER</Badge>
-        </div>
-        <div className="flex gap-2 flex-wrap justify-center">
-          {validDealerHand.map((card, index) => (
-            <PlayingCard
-              key={`dealer-${card.id}-${index}`}
-              card={card}
-              faceUp={dealerRevealed || index === 0}
-            />
-          ))}
-        </div>
-      </div>
+      >
+        <div className="w-full h-full relative bg-gradient-to-br from-green-800 via-green-900 to-green-950 rounded-lg shadow-2xl">
+          <div 
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage: `
+                repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,0.03) 35px, rgba(255,255,255,0.03) 70px),
+                repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(0,0,0,0.05) 35px, rgba(0,0,0,0.05) 70px)
+              `
+            }}
+          />
 
-      <div className="relative z-10 w-full flex justify-around items-center flex-wrap gap-4">
-        {players.map((player) => {
-          if (!player || !player.id) return null
-          const isCurrentPlayer = player.id === currentPlayerId
-          const validPlayerHand = player.hand.filter(isValidCard)
+          <div 
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[200px] rounded-full border-4 border-gold/30"
+            style={{
+              boxShadow: 'inset 0 0 40px rgba(212,175,55,0.1)'
+            }}
+          />
 
-          return (
-            <div
-              key={`player-${player.id}`}
-              className={`flex flex-col items-center gap-3 p-4 rounded-lg transition-all ${
-                isCurrentPlayer
-                  ? 'bg-gold/20 border-2 border-gold shadow-lg shadow-gold/50'
-                  : 'bg-black/20 border border-white/10'
-              }`}
+          <div className="absolute top-[20%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-4">
+            <Badge 
+              variant="secondary" 
+              className="text-xs px-3 py-1 shadow-lg"
+              style={{
+                transform: 'rotateX(-25deg)',
+                transformStyle: 'preserve-3d'
+              }}
             >
-              <div className="flex items-center gap-2">
-                <Badge variant={isCurrentPlayer ? 'default' : 'outline'} className="text-xs">
-                  {player.name}
-                </Badge>
-              </div>
-              <div className="flex gap-2 flex-wrap justify-center">
-                {validPlayerHand.map((card, cardIndex) => (
-                  <PlayingCard
-                    key={`player-${player.id}-${card.id}-${cardIndex}`}
-                    card={card}
-                    faceUp
-                  />
-                ))}
-              </div>
+              DEALER
+            </Badge>
+            <div className="flex gap-2" style={{ transform: 'rotateX(-10deg)', transformStyle: 'preserve-3d' }}>
+              {validDealerHand.map((card, index) => (
+                <PlayingCard
+                  key={`dealer-${card.id}-${index}`}
+                  card={card}
+                  faceUp={dealerRevealed || index === 0}
+                  delay={index * 0.15}
+                />
+              ))}
             </div>
-          )
-        })}
+          </div>
+
+          {players.map((player, index) => {
+            if (!player || !player.id) return null
+            const isCurrentPlayer = player.id === currentPlayerId
+            const validPlayerHand = player.hand.filter(isValidCard)
+            const position = getPlayerPosition(index, players.length)
+
+            return (
+              <motion.div
+                key={`player-${player.id}`}
+                className="absolute"
+                style={{
+                  ...position,
+                  transformStyle: 'preserve-3d'
+                }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+              >
+                <div
+                  className={`flex flex-col items-center gap-3 p-4 rounded-lg backdrop-blur-sm transition-all ${
+                    isCurrentPlayer
+                      ? 'bg-gold/30 border-2 border-gold shadow-2xl'
+                      : 'bg-black/20 border border-white/20'
+                  }`}
+                  style={{
+                    transform: 'rotateX(-15deg)',
+                    transformStyle: 'preserve-3d',
+                    boxShadow: isCurrentPlayer 
+                      ? '0 15px 40px rgba(212,175,55,0.5), 0 0 30px rgba(212,175,55,0.3)'
+                      : '0 10px 25px rgba(0,0,0,0.3)'
+                  }}
+                >
+                  <Badge 
+                    variant={isCurrentPlayer ? 'default' : 'outline'} 
+                    className="text-xs whitespace-nowrap shadow-md"
+                  >
+                    {player.name}
+                  </Badge>
+                  <div className="flex gap-2">
+                    {validPlayerHand.map((card, cardIndex) => (
+                      <PlayingCard
+                        key={`player-${player.id}-${card.id}-${cardIndex}`}
+                        card={card}
+                        faceUp
+                        delay={cardIndex * 0.1}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
