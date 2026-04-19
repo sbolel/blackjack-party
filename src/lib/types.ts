@@ -1,10 +1,37 @@
 export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades'
 export type Rank = 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K'
 
+export interface PhysicalCard {
+  suit: Suit
+  rank: Rank
+  deckIndex: number
+  cardIndex: number
+  uuid: string
+}
+
 export interface Card {
   suit: Suit
   rank: Rank
   id: string
+}
+
+export interface TableRules {
+  numDecks: number
+  dealerHitsSoft17: boolean
+  doubleAfterSplitAllowed: boolean
+  surrenderAllowed: boolean
+  blackjackPayout: number
+  minBet: number
+  maxBet: number
+  penetration: number
+}
+
+export interface Shoe {
+  cards: PhysicalCard[]
+  discardPile: PhysicalCard[]
+  numDecks: number
+  penetrationCard: number
+  needsReshuffle: boolean
 }
 
 export interface Player {
@@ -12,25 +39,36 @@ export interface Player {
   name: string
   chips: number
   currentBet: number
-  hand: Card[]
+  hand: PhysicalCard[]
   status: 'waiting' | 'playing' | 'standing' | 'bust' | 'blackjack' | 'won' | 'lost' | 'push'
   isDealer?: boolean
   isActive?: boolean
 }
 
+export interface GameStateMetadata {
+  version: number
+  createdAt: number
+  lastUpdatedAt: number
+  createdBy: string
+  authoritative: boolean
+}
+
 export interface GameState {
   roomId: string
   players: Player[]
-  deck: Card[]
+  shoe: Shoe
   currentPlayerIndex: number
   phase: 'lobby' | 'betting' | 'dealing' | 'playing' | 'dealer-turn' | 'results' | 'game-over'
-  dealerHand: Card[]
+  dealerHand: PhysicalCard[]
   dealerRevealed: boolean
   roundNumber: number
   maxPlayers: number
   isOnline: boolean
   startingChips: number
-  minBet: number
+  rules: TableRules
+  metadata: GameStateMetadata
+  deck?: Card[]
+  minBet?: number
 }
 
 export type GameMode = 'online' | 'local'
