@@ -56,6 +56,38 @@ export function calculateHandValue(hand: Card[]): number {
   return value
 }
 
+export function calculateHandValues(hand: Card[]): { low: number; high: number; hasAce: boolean } {
+  if (!Array.isArray(hand) || hand.length === 0) {
+    return { low: 0, high: 0, hasAce: false }
+  }
+
+  let value = 0
+  let aces = 0
+
+  for (const card of hand) {
+    if (!card || !card.rank) continue
+    const cardValue = getCardValue(card.rank)
+    value += cardValue
+    if (card.rank === 'A') aces++
+  }
+
+  const hasAce = aces > 0
+  const high = value
+
+  let low = value
+  let acesRemaining = aces
+  while (low > 21 && acesRemaining > 0) {
+    low -= 10
+    acesRemaining--
+  }
+
+  if (!hasAce || low === high) {
+    return { low, high: low, hasAce: false }
+  }
+
+  return { low: low, high, hasAce }
+}
+
 export function isBlackjack(hand: Card[]): boolean {
   return hand.length === 2 && calculateHandValue(hand) === 21
 }

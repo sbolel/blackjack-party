@@ -1,9 +1,9 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Player } from '@/lib/types'
-import { calculateHandValue } from '@/lib/gameLogic'
 import { CurrencyDollar, Crown } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
+import { HandValue } from './HandValue'
 
 interface PlayerCardProps {
   player: Player
@@ -12,8 +12,6 @@ interface PlayerCardProps {
 }
 
 export function PlayerCard({ player, isActive, isDealer }: PlayerCardProps) {
-  const handValue = Array.isArray(player.hand) && player.hand.length > 0 ? calculateHandValue(player.hand) : null
-
   const getStatusColor = () => {
     switch (player.status) {
       case 'won':
@@ -89,10 +87,8 @@ export function PlayerCard({ player, isActive, isDealer }: PlayerCardProps) {
           </div>
         )}
 
-        {handValue !== null && (
-          <div className="text-sm">
-            Hand value: <span className="font-mono font-bold text-lg">{handValue}</span>
-          </div>
+        {player.hand && player.hand.length > 0 && (
+          <HandValue hand={player.hand} className="text-sm" />
         )}
       </div>
     </Card>

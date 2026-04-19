@@ -1,13 +1,102 @@
 import { Player, Card } from '@/lib/types'
-import { getCardSymbol, getCardColor } from '@/lib/gameLogic'
+import { getCardSymbol, getCardColor, calculateHandValues } from '@/lib/gameLogic'
 import { Badge } from './ui/badge'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect } from 'react'
 
 interface GameTable3DProps {
   players: Player[]
   dealerHand: Card[]
   dealerRevealed: boolean
   currentPlayerId?: string
+}
+
+function Sparkle({ delay }: { delay: number }) {
+  const angle = Math.random() * 360
+  const distance = 30 + Math.random() * 30
+  const duration = 0.6 + Math.random() * 0.4
+
+  return (
+    <motion.div
+      className="absolute w-1.5 h-1.5 rounded-full bg-gold"
+      initial={{ 
+        opacity: 1, 
+        scale: 0,
+        x: 0,
+        y: 0,
+      }}
+      animate={{
+        opacity: 0,
+        scale: [0, 1, 0.5],
+        x: Math.cos(angle * Math.PI / 180) * distance,
+        y: Math.sin(angle * Math.PI / 180) * distance,
+      }}
+      transition={{
+        duration,
+        delay,
+        ease: 'easeOut'
+      }}
+      style={{
+        boxShadow: '0 0 6px var(--gold)'
+      }}
+    />
+  )
+}
+
+interface HandValueDisplayProps {
+  hand: Card[]
+  revealed?: boolean
+}
+
+function HandValueDisplay({ hand, revealed = true }: HandValueDisplayProps) {
+  const [showSparkles, setShowSparkles] = useState(false)
+  const [previousValue, setPreviousValue] = useState<number | null>(null)
+
+  if (!revealed || hand.length === 0) return null
+
+  const { low, high, hasAce } = calculateHandValues(hand)
+  const displayValue = low
+  const isBust = low > 21
+  const isBlackjack = low === 21
+
+  useEffect(() => {
+    if (isBlackjack && previousValue !== 21 && previousValue !== null) {
+      setShowSparkles(true)
+      const timer = setTimeout(() => setShowSparkles(false), 1000)
+      return () => clearTimeout(timer)
+    }
+    setPreviousValue(displayValue)
+  }, [isBlackjack, displayValue, previousValue])
+
+  const getValueColor = (value: number) => {
+    if (value > 21) return 'text-red-500'
+    if (value === 21) return 'text-green-400'
+    return 'text-white'
+  }
+
+  return (
+    <div className="relative mt-2 text-sm font-bold">
+      {hasAce && high !== low ? (
+        <div className="flex items-center gap-1">
+          <span className={getValueColor(low)}>{low}</span>
+          <span className="text-white/50">/</span>
+          <span className={getValueColor(high)}>{high}</span>
+        </div>
+      ) : (
+        <span className={getValueColor(displayValue)}>{displayValue}</span>
+      )}
+      
+      <AnimatePresence>
+        {showSparkles && (
+          <div className="absolute inset-0 pointer-events-none">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <Sparkle key={i} delay={i * 0.03} />
+            ))}
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
 }
 
 function PlayingCard({ card, faceUp, delay = 0 }: { card: Card; faceUp: boolean; delay?: number }) {
@@ -142,15 +231,18 @@ export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayer
             >
               DEALER
             </Badge>
-            <div className="flex gap-2" style={{ transform: 'rotateX(-10deg)', transformStyle: 'preserve-3d' }}>
-              {validDealerHand.map((card, index) => (
-                <PlayingCard
-                  key={`dealer-${card.id}-${index}`}
-                  card={card}
-                  faceUp={dealerRevealed || index === 0}
-                  delay={index * 0.15}
-                />
-              ))}
+            <div className="flex flex-col items-center gap-1" style={{ transform: 'rotateX(-10deg)', transformStyle: 'preserve-3d' }}>
+              <div className="flex gap-2">
+                {validDealerHand.map((card, index) => (
+                  <PlayingCard
+                    key={`dealer-${card.id}-${index}`}
+                    card={card}
+                    faceUp={dealerRevealed || index === 0}
+                    delay={index * 0.15}
+                  />
+                ))}
+              </div>
+              <HandValueDisplay hand={validDealerHand} revealed={dealerRevealed} />
             </div>
           </div>
 
@@ -202,6 +294,9 @@ export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayer
                       />
                     ))}
                   </div>
+                  {validPlayerHand.length > 0 && (
+                    <HandValueDisplay hand={validPlayerHand} revealed />
+                  )}
                 </div>
               </motion.div>
             )
