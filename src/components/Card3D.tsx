@@ -90,7 +90,7 @@ function createBackTexture(): THREE.CanvasTexture {
 }
 
 export function Card3D({ card, position, rotation, faceUp }: Card3DProps) {
-  const meshRef = useRef<THREE.Group>(null!)
+  const meshRef = useRef<THREE.Group | null>(null)
   const targetRotation = useRef(faceUp ? 0 : Math.PI)
 
   if (!card || !card.id || !card.suit || !card.rank) {
@@ -98,6 +98,9 @@ export function Card3D({ card, position, rotation, faceUp }: Card3DProps) {
   }
 
   const safeRotation: [number, number, number] = rotation || [0, 0, 0]
+  const safePosition: [number, number, number] = Array.isArray(position) && position.length === 3 
+    ? position 
+    : [0, 0, 0]
 
   useEffect(() => {
     targetRotation.current = faceUp ? 0 : Math.PI
@@ -124,7 +127,7 @@ export function Card3D({ card, position, rotation, faceUp }: Card3DProps) {
   const backTexture = useMemo(() => createBackTexture(), [])
 
   return (
-    <group ref={meshRef} position={position} rotation={safeRotation}>
+    <group ref={meshRef} position={safePosition} rotation={safeRotation}>
       <mesh castShadow receiveShadow>
         <boxGeometry args={[1.8, 2.5, 0.05]} />
         <meshStandardMaterial color="#FFFFFF" />
