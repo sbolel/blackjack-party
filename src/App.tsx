@@ -1,4 +1,3 @@
-import spark from '@github/spark'
 import { useState, useCallback, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { GameTable3D } from './components/GameTable3D'
