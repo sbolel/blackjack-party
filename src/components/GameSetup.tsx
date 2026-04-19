@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Users, Play, SignIn, Copy } from '@phosphor-icons/react'
-import { useState } from 'react'
+import { useKV } from '@github/spark/hooks'
 import { toast } from 'sonner'
 
 interface GameSetupProps {
@@ -25,66 +25,85 @@ interface GameSetupProps {
 }
 
 export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSetupProps) {
-  const [gameMode, setGameMode] = useState<'local' | 'online'>('local')
+  const [gameMode, setGameMode] = useKV<'local' | 'online'>('setup-game-mode', 'local')
   
-  const [numPlayers, setNumPlayers] = useState('2')
-  const [playerNames, setPlayerNames] = useState(['Player 1', 'Player 2'])
-  const [startingChips, setStartingChips] = useState('500')
-  const [minBet, setMinBet] = useState('10')
+  const [numPlayers, setNumPlayers] = useKV<string>('setup-num-players', '2')
+  const [playerNames, setPlayerNames] = useKV<string[]>('setup-player-names', ['Player 1', 'Player 2'])
+  const [startingChips, setStartingChips] = useKV<string>('setup-starting-chips', '500')
+  const [minBet, setMinBet] = useKV<string>('setup-min-bet', '10')
   
-  const [roomName, setRoomName] = useState('')
-  const [maxPlayers, setMaxPlayers] = useState('4')
-  const [joinRoomId, setJoinRoomId] = useState('')
-  const [joinPlayerName, setJoinPlayerName] = useState('')
+  const [roomName, setRoomName] = useKV<string>('setup-room-name', '')
+  const [maxPlayers, setMaxPlayers] = useKV<string>('setup-max-players', '4')
+  const [joinRoomId, setJoinRoomId] = useKV<string>('setup-join-room-id', '')
+  const [joinPlayerName, setJoinPlayerName] = useKV<string>('setup-join-player-name', '')
 
   const updatePlayerName = (index: number, name: string) => {
-    const newNames = [...playerNames]
-    newNames[index] = name || `Player ${index + 1}`
-    setPlayerNames(newNames)
+    setPlayerNames((currentNames) => {
+      const names = currentNames || ['Player 1', 'Player 2']
+      const newNames = [...names]
+      newNames[index] = name
+      return newNames
+    })
   }
 
   const handleNumPlayersChange = (value: string) => {
     setNumPlayers(value)
-    const count = parseInt(value)
-    const newNames = [...playerNames]
-    while (newNames.length < count) {
-      newNames.push(`Player ${newNames.length + 1}`)
-    }
-    setPlayerNames(newNames.slice(0, count))
+    setPlayerNames((currentNames) => {
+      const names = currentNames || []
+      const count = parseInt(value)
+      const newNames = [...names]
+      while (newNames.length < count) {
+        newNames.push(`Player ${newNames.length + 1}`)
+      }
+      return newNames.slice(0, count)
+    })
   }
 
   const handleStartLocal = () => {
+    const names = playerNames || ['Player 1', 'Player 2']
+    const numPlayersValue = numPlayers || '2'
+    const startingChipsValue = startingChips || '500'
+    const minBetValue = minBet || '10'
+    
     onStartLocal({
-      numPlayers: parseInt(numPlayers),
-      playerNames: playerNames.slice(0, parseInt(numPlayers)),
-      startingChips: parseInt(startingChips),
-      minBet: parseInt(minBet)
+      numPlayers: parseInt(numPlayersValue),
+      playerNames: names.slice(0, parseInt(numPlayersValue)),
+      startingChips: parseInt(startingChipsValue),
+      minBet: parseInt(minBetValue)
     })
   }
 
   const handleCreateOnline = () => {
-    if (!roomName.trim()) {
+    const roomNameValue = roomName || ''
+    const maxPlayersValue = maxPlayers || '4'
+    const startingChipsValue = startingChips || '500'
+    const minBetValue = minBet || '10'
+    
+    if (!roomNameValue.trim()) {
       toast.error('Please enter a room name')
       return
     }
     onCreateOnline({
-      roomName: roomName.trim(),
-      maxPlayers: parseInt(maxPlayers),
-      startingChips: parseInt(startingChips),
-      minBet: parseInt(minBet)
+      roomName: roomNameValue.trim(),
+      maxPlayers: parseInt(maxPlayersValue),
+      startingChips: parseInt(startingChipsValue),
+      minBet: parseInt(minBetValue)
     })
   }
 
   const handleJoinOnline = () => {
-    if (!joinRoomId.trim()) {
+    const joinRoomIdValue = joinRoomId || ''
+    const joinPlayerNameValue = joinPlayerName || ''
+    
+    if (!joinRoomIdValue.trim()) {
       toast.error('Please enter a room code')
       return
     }
-    if (!joinPlayerName.trim()) {
+    if (!joinPlayerNameValue.trim()) {
       toast.error('Please enter your name')
       return
     }
-    onJoinOnline(joinRoomId.trim().toUpperCase(), joinPlayerName.trim())
+    onJoinOnline(joinRoomIdValue.trim().toUpperCase(), joinPlayerNameValue.trim())
   }
 
   return (
@@ -100,7 +119,7 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
             </p>
           </div>
 
-          <Tabs value={gameMode} onValueChange={(v) => setGameMode(v as 'local' | 'online')}>
+          <Tabs value={gameMode || 'local'} onValueChange={(v) => setGameMode(v as 'local' | 'online')}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="online">Online Multiplayer</TabsTrigger>
               <TabsTrigger value="local">Local Hot-Seat</TabsTrigger>
@@ -114,7 +133,7 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
                   <div>
                     <label className="text-sm font-semibold mb-2 block">Room Name</label>
                     <Input
-                      value={roomName}
+                      value={roomName || ''}
                       onChange={(e) => setRoomName(e.target.value)}
                       placeholder="My Blackjack Game"
                       maxLength={30}
@@ -123,7 +142,7 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
 
                   <div>
                     <label className="text-sm font-semibold mb-2 block">Max Players</label>
-                    <Select value={maxPlayers} onValueChange={setMaxPlayers}>
+                    <Select value={maxPlayers || '4'} onValueChange={setMaxPlayers}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -139,7 +158,7 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
                     <label className="text-sm font-semibold mb-2 block">Starting Chips</label>
                     <Input
                       type="number"
-                      value={startingChips}
+                      value={startingChips || '500'}
                       onChange={(e) => setStartingChips(e.target.value)}
                       min="100"
                       max="10000"
@@ -151,7 +170,7 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
                     <label className="text-sm font-semibold mb-2 block">Minimum Bet</label>
                     <Input
                       type="number"
-                      value={minBet}
+                      value={minBet || '10'}
                       onChange={(e) => setMinBet(e.target.value)}
                       min="5"
                       max="100"
@@ -171,7 +190,7 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
                   <div>
                     <label className="text-sm font-semibold mb-2 block">Room Code</label>
                     <Input
-                      value={joinRoomId}
+                      value={joinRoomId || ''}
                       onChange={(e) => setJoinRoomId(e.target.value.toUpperCase())}
                       placeholder="ABC123"
                       maxLength={6}
@@ -181,7 +200,7 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
                   <div>
                     <label className="text-sm font-semibold mb-2 block">Your Name</label>
                     <Input
-                      value={joinPlayerName}
+                      value={joinPlayerName || ''}
                       onChange={(e) => setJoinPlayerName(e.target.value)}
                       placeholder="Player Name"
                       maxLength={20}
@@ -199,7 +218,7 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
             <TabsContent value="local" className="space-y-4">
               <div>
                 <label className="text-sm font-semibold mb-2 block">Number of Players</label>
-                <Select value={numPlayers} onValueChange={handleNumPlayersChange}>
+                <Select value={numPlayers || '2'} onValueChange={handleNumPlayersChange}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -214,7 +233,7 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
               <div>
                 <label className="text-sm font-semibold mb-2 block">Player Names</label>
                 <div className="space-y-2">
-                  {playerNames.map((name, index) => (
+                  {(playerNames || ['Player 1', 'Player 2']).map((name, index) => (
                     <Input
                       key={index}
                       value={name}
@@ -230,7 +249,7 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
                   <label className="text-sm font-semibold mb-2 block">Starting Chips</label>
                   <Input
                     type="number"
-                    value={startingChips}
+                    value={startingChips || '500'}
                     onChange={(e) => setStartingChips(e.target.value)}
                     min="100"
                     max="10000"
@@ -242,7 +261,7 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
                   <label className="text-sm font-semibold mb-2 block">Minimum Bet</label>
                   <Input
                     type="number"
-                    value={minBet}
+                    value={minBet || '10'}
                     onChange={(e) => setMinBet(e.target.value)}
                     min="5"
                     max="100"
