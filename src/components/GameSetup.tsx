@@ -25,7 +25,7 @@ interface GameSetupProps {
 }
 
 export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSetupProps) {
-  const [gameMode, setGameMode] = useState<'local' | 'online'>('online')
+  const [gameMode, setGameMode] = useState<'local' | 'online'>('local')
   
   const [numPlayers, setNumPlayers] = useState('2')
   const [playerNames, setPlayerNames] = useState(['Player 1', 'Player 2'])
