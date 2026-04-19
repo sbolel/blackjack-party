@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import { Card3D } from './Card3D'
@@ -40,11 +41,11 @@ export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayer
   }
 
   const isValidCard = (card: any): card is Card => {
-    return card && typeof card === 'object' && card.id && card.suit && card.rank
+    return !!(card && typeof card === 'object' && card.id && card.suit && card.rank)
   }
 
   const isValidPlayer = (player: any): player is Player => {
-    return player && typeof player === 'object' && player.id && Array.isArray(player.hand)
+    return !!(player && typeof player === 'object' && player.id && Array.isArray(player.hand))
   }
 
   const validDealerHand = Array.isArray(dealerHand) ? dealerHand.filter(isValidCard) : []
@@ -53,68 +54,70 @@ export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayer
   return (
     <ErrorBoundary FallbackComponent={FallbackComponent}>
       <div className="w-full h-full">
-        <Canvas>
-          <PerspectiveCamera makeDefault={true} position={[0, 15, 0]} rotation={[-Math.PI / 2.5, 0, 0]} />
-          <OrbitControls 
-            enableRotate={false}
-            enableZoom={false}
-            enablePan={false}
-          />
-          
-          <ambientLight intensity={0.6} />
-          <directionalLight position={[10, 10, 5]} intensity={1} />
-          <pointLight position={[0, 10, 0]} intensity={0.8} />
-          
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1, 0]}>
-            <planeGeometry args={[30, 30]} />
-            <meshStandardMaterial color="#1a472a" />
-          </mesh>
-          
-          <mesh position={[0, -0.9, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[10, 64]} />
-            <meshStandardMaterial color="#2d5a3d" />
-          </mesh>
+        <Canvas dpr={[1, 2]} gl={{ antialias: true }}>
+          <Suspense fallback={null}>
+            <PerspectiveCamera makeDefault position={[0, 15, 0]} rotation={[-Math.PI / 2.5, 0, 0]} />
+            <OrbitControls 
+              enableRotate={false}
+              enableZoom={false}
+              enablePan={false}
+            />
+            
+            <ambientLight intensity={0.6} />
+            <directionalLight position={[10, 10, 5]} intensity={1} />
+            <pointLight position={[0, 10, 0]} intensity={0.8} />
+            
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1, 0]}>
+              <planeGeometry args={[30, 30]} />
+              <meshStandardMaterial color="#1a472a" />
+            </mesh>
+            
+            <mesh position={[0, -0.9, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <circleGeometry args={[10, 64]} />
+              <meshStandardMaterial color="#2d5a3d" />
+            </mesh>
 
-          {validDealerHand.map((card, index) => {
-            const pos = getDealerCardPosition(index, validDealerHand.length)
-            return (
-              <Card3D
-                key={`dealer-${card.id}-${index}`}
-                card={card}
-                position={pos}
-                faceUp={dealerRevealed || index === 0}
-              />
-            )
-          })}
+            {validDealerHand.map((card, index) => {
+              const pos = getDealerCardPosition(index, validDealerHand.length)
+              return (
+                <Card3D
+                  key={`dealer-${card.id}-${index}`}
+                  card={card}
+                  position={pos}
+                  faceUp={dealerRevealed || index === 0}
+                />
+              )
+            })}
 
-          {validPlayers.map((player, playerIndex) => {
-            const playerPos = getPlayerPosition(playerIndex, validPlayers.length)
-            const isCurrentPlayer = player.id === currentPlayerId
-            const validPlayerHand = player.hand.filter(isValidCard)
+            {validPlayers.map((player, playerIndex) => {
+              const playerPos = getPlayerPosition(playerIndex, validPlayers.length)
+              const isCurrentPlayer = player.id === currentPlayerId
+              const validPlayerHand = player.hand.filter(isValidCard)
 
-            return (
-              <group key={`player-${player.id}`}>
-                {validPlayerHand.map((card, cardIndex) => {
-                  const cardPos = getPlayerCardPosition(playerPos, cardIndex)
-                  return (
-                    <Card3D
-                      key={`player-${player.id}-${card.id}-${cardIndex}`}
-                      card={card}
-                      position={cardPos}
-                      faceUp={true}
-                    />
-                  )
-                })}
-                
-                {isCurrentPlayer && (
-                  <mesh position={[playerPos[0], -0.8, playerPos[2]]}>
-                    <cylinderGeometry args={[0.5, 0.5, 0.1, 32]} />
-                    <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={0.5} />
-                  </mesh>
-                )}
-              </group>
-            )
-          })}
+              return (
+                <group key={`player-${player.id}`}>
+                  {validPlayerHand.map((card, cardIndex) => {
+                    const cardPos = getPlayerCardPosition(playerPos, cardIndex)
+                    return (
+                      <Card3D
+                        key={`player-${player.id}-${card.id}-${cardIndex}`}
+                        card={card}
+                        position={cardPos}
+                        faceUp
+                      />
+                    )
+                  })}
+                  
+                  {isCurrentPlayer && (
+                    <mesh position={[playerPos[0], -0.8, playerPos[2]]}>
+                      <cylinderGeometry args={[0.5, 0.5, 0.1, 32]} />
+                      <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={0.5} />
+                    </mesh>
+                  )}
+                </group>
+              )
+            })}
+          </Suspense>
         </Canvas>
       </div>
     </ErrorBoundary>

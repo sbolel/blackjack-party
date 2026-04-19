@@ -5,24 +5,21 @@ import type { Card } from '@/lib/types'
 import { getCardSymbol, getCardColor } from '@/lib/gameLogic'
 
 interface Card3DProps {
-  card: Card
+  card: Card | null | undefined
   position: [number, number, number]
   rotation?: [number, number, number]
   faceUp: boolean
-  onClick?: () => void
 }
 
-function createCardTexture(card: Card | null | undefined): THREE.CanvasTexture | null {
-  if (!card || !card.suit || !card.rank) return null
-  
-  const canvas = document.createElement('canvas')
-  canvas.width = 256
-  canvas.height = 358
-  const ctx = canvas.getContext('2d')
-  
-  if (!ctx) return null
-  
+function createCardTexture(card: Card): THREE.CanvasTexture | null {
   try {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 358
+    const ctx = canvas.getContext('2d')
+    
+    if (!ctx) return null
+    
     ctx.fillStyle = '#FFFFFF'
     ctx.fillRect(0, 0, 256, 358)
     
@@ -92,35 +89,43 @@ function createBackTexture(): THREE.CanvasTexture {
   return texture
 }
 
-export function Card3D({ card, position, rotation = [0, 0, 0], faceUp }: Card3DProps) {
-  const meshRef = useRef<THREE.Group>(null)
+export function Card3D({ card, position, rotation, faceUp }: Card3DProps) {
+  const meshRef = useRef<THREE.Group>(null!)
   const targetRotation = useRef(faceUp ? 0 : Math.PI)
 
-  if (!card || !card.id || !card.suit || !card.rank) return null
+  if (!card || !card.id || !card.suit || !card.rank) {
+    return null
+  }
+
+  const safeRotation: [number, number, number] = rotation || [0, 0, 0]
 
   useEffect(() => {
     targetRotation.current = faceUp ? 0 : Math.PI
   }, [faceUp])
 
   useFrame(() => {
-    if (meshRef.current) {
+    if (!meshRef.current) return
+    try {
       const currentY = meshRef.current.rotation.y
       const diff = targetRotation.current - currentY
       if (Math.abs(diff) > 0.01) {
         meshRef.current.rotation.y += diff * 0.1
       }
+    } catch (e) {
+      console.error('Error in useFrame:', e)
     }
   })
 
-  const cardTexture = useMemo(() => createCardTexture(card), [card.id, card.rank, card.suit])
+  const cardTexture = useMemo(() => {
+    if (!card || !card.suit || !card.rank) return null
+    return createCardTexture(card)
+  }, [card])
+  
   const backTexture = useMemo(() => createBackTexture(), [])
 
-  const pos: [number, number, number] = [position[0], position[1], position[2]]
-  const rot: [number, number, number] = [rotation[0], rotation[1], rotation[2]]
-
   return (
-    <group ref={meshRef} position={pos} rotation={rot}>
-      <mesh castShadow={true} receiveShadow={true}>
+    <group ref={meshRef} position={position} rotation={safeRotation}>
+      <mesh castShadow receiveShadow>
         <boxGeometry args={[1.8, 2.5, 0.05]} />
         <meshStandardMaterial color="#FFFFFF" />
       </mesh>
@@ -128,14 +133,14 @@ export function Card3D({ card, position, rotation = [0, 0, 0], faceUp }: Card3DP
       {cardTexture && (
         <mesh position={[0, 0, 0.026]}>
           <planeGeometry args={[1.75, 2.45]} />
-          <meshBasicMaterial map={cardTexture} transparent={true} />
+          <meshBasicMaterial map={cardTexture} transparent />
         </mesh>
       )}
       
       {backTexture && (
         <mesh position={[0, 0, -0.026]} rotation={[0, Math.PI, 0]}>
           <planeGeometry args={[1.75, 2.45]} />
-          <meshBasicMaterial map={backTexture} transparent={true} />
+          <meshBasicMaterial map={backTexture} transparent />
         </mesh>
       )}
     </group>
