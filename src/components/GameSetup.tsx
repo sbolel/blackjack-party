@@ -39,10 +39,9 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
 
   const updatePlayerName = (index: number, name: string) => {
     setPlayerNames((currentNames) => {
-      const newNames = [...currentNames]
+      const newNames = [...(currentNames || [])]
       newNames[index] = name
       return newNames
-    })
     })
   }
 
