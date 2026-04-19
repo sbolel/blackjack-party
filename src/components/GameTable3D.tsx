@@ -1,9 +1,6 @@
-import { Suspense } from 'react'
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
-import { Card3D } from './Card3D'
 import { Player, Card } from '@/lib/types'
-import { ErrorBoundary } from 'react-error-boundary'
+import { getCardSymbol, getCardColor } from '@/lib/gameLogic'
+import { Badge } from './ui/badge'
 
 interface GameTable3DProps {
   players: Player[]
@@ -12,149 +9,109 @@ interface GameTable3DProps {
   currentPlayerId?: string
 }
 
-function FallbackComponent() {
+function PlayingCard({ card, faceUp }: { card: Card; faceUp: boolean }) {
+  if (!faceUp) {
+    return (
+      <div className="w-16 h-24 rounded-lg bg-gradient-to-br from-blue-700 to-blue-900 border-2 border-gold flex items-center justify-center shadow-lg">
+        <div className="text-gold text-xl font-bold">♠♥♣♦</div>
+      </div>
+    )
+  }
+
+  const symbol = getCardSymbol(card.suit)
+  const color = getCardColor(card.suit)
+
   return (
-    <div className="w-full h-full flex items-center justify-center bg-muted/20 rounded-lg">
-      <div className="text-center p-6">
-        <p className="text-muted-foreground mb-2">3D view unavailable</p>
-        <p className="text-xs text-muted-foreground">The game continues normally</p>
+    <div className="w-16 h-24 rounded-lg bg-white border-2 border-gray-300 shadow-lg flex flex-col p-2">
+      <div className="flex flex-col items-start">
+        <span className="text-xs font-bold" style={{ color }}>
+          {card.rank}
+        </span>
+        <span className="text-lg" style={{ color }}>
+          {symbol}
+        </span>
+      </div>
+      <div className="flex-1 flex items-center justify-center">
+        <span className="text-3xl" style={{ color }}>
+          {symbol}
+        </span>
+      </div>
+      <div className="flex flex-col items-end rotate-180">
+        <span className="text-xs font-bold" style={{ color }}>
+          {card.rank}
+        </span>
+        <span className="text-lg" style={{ color }}>
+          {symbol}
+        </span>
       </div>
     </div>
   )
 }
 
 export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayerId }: GameTable3DProps) {
-  const getPlayerPosition = (index: number, total: number): [number, number, number] => {
-    try {
-      if (typeof index !== 'number' || typeof total !== 'number' || total === 0) {
-        return [0, -0.5, 0]
-      }
-      const radius = 8
-      const angle = (index / total) * Math.PI * 1.2 + Math.PI * 0.4
-      const x = Math.cos(angle) * radius
-      const z = Math.sin(angle) * radius
-      return [x, -0.5, z]
-    } catch (e) {
-      console.error('Error calculating player position:', e)
-      return [0, -0.5, 0]
-    }
-  }
-
-  const getDealerCardPosition = (index: number, totalCards: number): [number, number, number] => {
-    try {
-      if (typeof index !== 'number' || typeof totalCards !== 'number') {
-        return [0, -0.5, -6]
-      }
-      return [-totalCards * 1 + index * 2, -0.5, -6]
-    } catch (e) {
-      console.error('Error calculating dealer card position:', e)
-      return [0, -0.5, -6]
-    }
-  }
-
-  const getPlayerCardPosition = (playerPos: [number, number, number], cardIndex: number): [number, number, number] => {
-    try {
-      if (!Array.isArray(playerPos) || playerPos.length !== 3 || typeof cardIndex !== 'number') {
-        return [0, -0.5, 0]
-      }
-      return [playerPos[0] - 1 + cardIndex * 1, playerPos[1], playerPos[2]]
-    } catch (e) {
-      console.error('Error calculating player card position:', e)
-      return [0, -0.5, 0]
-    }
-  }
-
   const isValidCard = (card: any): card is Card => {
     return !!(card && typeof card === 'object' && card.id && card.suit && card.rank)
   }
 
-  const isValidPlayer = (player: any): player is Player => {
-    return !!(player && typeof player === 'object' && player.id && Array.isArray(player.hand))
-  }
-
   const validDealerHand = Array.isArray(dealerHand) ? dealerHand.filter(isValidCard) : []
-  const validPlayers = Array.isArray(players) ? players.filter(isValidPlayer) : []
 
-  try {
-    return (
-      <ErrorBoundary FallbackComponent={FallbackComponent}>
-        <div className="w-full h-full">
-          <Canvas dpr={[1, 2]} gl={{ antialias: true }}>
-            <Suspense fallback={null}>
-              <PerspectiveCamera makeDefault position={[0, 15, 0]} rotation={[-Math.PI / 2.5, 0, 0]} />
-              <OrbitControls 
-                enableRotate={false}
-                enableZoom={false}
-                enablePan={false}
-              />
-              
-              <ambientLight intensity={0.6} />
-              <directionalLight position={[10, 10, 5]} intensity={1} />
-              <pointLight position={[0, 10, 0]} intensity={0.8} />
-              
-              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1, 0]}>
-                <planeGeometry args={[30, 30]} />
-                <meshStandardMaterial color="#1a472a" />
-              </mesh>
-              
-              <mesh position={[0, -0.9, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <circleGeometry args={[10, 64]} />
-                <meshStandardMaterial color="#2d5a3d" />
-              </mesh>
-
-              {validDealerHand.map((card, index) => {
-                if (!card || !card.id) return null
-                const pos = getDealerCardPosition(index, validDealerHand.length)
-                if (!Array.isArray(pos) || pos.length !== 3) return null
-                return (
-                  <Card3D
-                    key={`dealer-${card.id}-${index}`}
-                    card={card}
-                    position={pos}
-                    faceUp={dealerRevealed || index === 0}
-                  />
-                )
-              })}
-
-              {validPlayers.map((player, playerIndex) => {
-                if (!player || !player.id || !Array.isArray(player.hand)) return null
-                const playerPos = getPlayerPosition(playerIndex, validPlayers.length)
-                if (!Array.isArray(playerPos) || playerPos.length !== 3) return null
-                const isCurrentPlayer = player.id === currentPlayerId
-                const validPlayerHand = player.hand.filter(isValidCard)
-
-                return (
-                  <group key={`player-${player.id}`}>
-                    {validPlayerHand.map((card, cardIndex) => {
-                      if (!card || !card.id) return null
-                      const cardPos = getPlayerCardPosition(playerPos, cardIndex)
-                      if (!Array.isArray(cardPos) || cardPos.length !== 3) return null
-                      return (
-                        <Card3D
-                          key={`player-${player.id}-${card.id}-${cardIndex}`}
-                          card={card}
-                          position={cardPos}
-                          faceUp
-                        />
-                      )
-                    })}
-                    
-                    {isCurrentPlayer && (
-                      <mesh position={[playerPos[0], -0.8, playerPos[2]]}>
-                        <cylinderGeometry args={[0.5, 0.5, 0.1, 32]} />
-                        <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={0.5} />
-                      </mesh>
-                    )}
-                  </group>
-                )
-              })}
-            </Suspense>
-          </Canvas>
+  return (
+    <div className="w-full h-full bg-gradient-to-br from-green-800 via-green-900 to-green-950 rounded-lg p-8 flex flex-col items-center justify-between relative overflow-hidden">
+      <div 
+        className="absolute inset-0 opacity-10"
+        style={{
+          backgroundImage: `repeating-radial-gradient(circle at 0 0, transparent 0, rgba(255,255,255,0.1) 10px, transparent 20px)`
+        }}
+      />
+      
+      <div className="relative z-10 flex flex-col items-center gap-6">
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-xs">DEALER</Badge>
         </div>
-      </ErrorBoundary>
-    )
-  } catch (error) {
-    console.error('GameTable3D render error:', error)
-    return <FallbackComponent />
-  }
+        <div className="flex gap-2 flex-wrap justify-center">
+          {validDealerHand.map((card, index) => (
+            <PlayingCard
+              key={`dealer-${card.id}-${index}`}
+              card={card}
+              faceUp={dealerRevealed || index === 0}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="relative z-10 w-full flex justify-around items-center flex-wrap gap-4">
+        {players.map((player) => {
+          if (!player || !player.id) return null
+          const isCurrentPlayer = player.id === currentPlayerId
+          const validPlayerHand = player.hand.filter(isValidCard)
+
+          return (
+            <div
+              key={`player-${player.id}`}
+              className={`flex flex-col items-center gap-3 p-4 rounded-lg transition-all ${
+                isCurrentPlayer
+                  ? 'bg-gold/20 border-2 border-gold shadow-lg shadow-gold/50'
+                  : 'bg-black/20 border border-white/10'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Badge variant={isCurrentPlayer ? 'default' : 'outline'} className="text-xs">
+                  {player.name}
+                </Badge>
+              </div>
+              <div className="flex gap-2 flex-wrap justify-center">
+                {validPlayerHand.map((card, cardIndex) => (
+                  <PlayingCard
+                    key={`player-${player.id}-${card.id}-${cardIndex}`}
+                    card={card}
+                    faceUp
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
