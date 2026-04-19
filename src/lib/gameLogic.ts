@@ -34,10 +34,15 @@ export function getCardValue(rank: Rank): number {
 }
 
 export function calculateHandValue(hand: Card[]): number {
+  if (!Array.isArray(hand) || hand.length === 0) {
+    return 0
+  }
+
   let value = 0
   let aces = 0
 
   for (const card of hand) {
+    if (!card || !card.rank) continue
     const cardValue = getCardValue(card.rank)
     value += cardValue
     if (card.rank === 'A') aces++

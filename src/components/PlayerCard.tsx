@@ -12,7 +12,7 @@ interface PlayerCardProps {
 }
 
 export function PlayerCard({ player, isActive, isDealer }: PlayerCardProps) {
-  const handValue = player.hand.length > 0 ? calculateHandValue(player.hand) : null
+  const handValue = Array.isArray(player.hand) && player.hand.length > 0 ? calculateHandValue(player.hand) : null
 
   const getStatusColor = () => {
     switch (player.status) {

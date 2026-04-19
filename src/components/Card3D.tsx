@@ -96,6 +96,8 @@ export function Card3D({ card, position, rotation = [0, 0, 0], faceUp }: Card3DP
   const meshRef = useRef<THREE.Group>(null)
   const targetRotation = useRef(faceUp ? 0 : Math.PI)
 
+  if (!card || !card.id || !card.suit || !card.rank) return null
+
   useEffect(() => {
     targetRotation.current = faceUp ? 0 : Math.PI
   }, [faceUp])
@@ -109,8 +111,6 @@ export function Card3D({ card, position, rotation = [0, 0, 0], faceUp }: Card3DP
       }
     }
   })
-
-  if (!card || !card.id || !card.suit || !card.rank) return null
 
   const cardTexture = useMemo(() => createCardTexture(card), [card.id, card.rank, card.suit])
   const backTexture = useMemo(() => createBackTexture(), [])
