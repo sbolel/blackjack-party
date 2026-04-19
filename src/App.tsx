@@ -596,56 +596,49 @@ function App() {
         </div>
       </div>
 
-      <div className="container mx-auto p-6">
-        <div className="grid lg:grid-cols-[1fr_400px] gap-6">
-          <div className="space-y-6">
-            <div className="bg-card rounded-lg border border-border overflow-hidden" style={{ height: '500px' }}>
-              <GameTable3D
-                players={gameState.players}
-                dealerHand={gameState.dealerHand}
-                dealerRevealed={gameState.dealerRevealed}
-                currentPlayerId={currentPlayerId}
-              />
-            </div>
-
-            <div className="bg-card rounded-lg border border-border p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold">Dealer</h3>
-                <Badge variant="secondary">
-                  {gameState.dealerRevealed && `Hand: ${calculateHandValue(gameState.dealerHand)}`}
-                  {!gameState.dealerRevealed && 'Hidden'}
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {gameState.dealerHand.length} cards
-              </p>
-            </div>
+      <div className="flex flex-col h-[calc(100vh-73px)]">
+        <div className="flex-1 p-6">
+          <div className="bg-card rounded-lg border border-border overflow-hidden h-full">
+            <GameTable3D
+              players={gameState.players}
+              dealerHand={gameState.dealerHand}
+              dealerRevealed={gameState.dealerRevealed}
+              currentPlayerId={currentPlayerId}
+            />
           </div>
+        </div>
 
-          <div className="space-y-4">
-            {currentPlayer && (
-              <GameControls
-                onBet={handleBet}
-                onHit={handleHit}
-                onStand={handleStand}
-                onNextRound={handleNextRound}
-                phase={gameState.phase}
-                isActivePlayer={isActivePlayer}
-                currentBet={currentPlayer.currentBet}
-                availableChips={currentPlayer.chips}
-                minBet={gameState.minBet}
-              />
-            )}
+        <div className="border-t border-border bg-card">
+          <div className="container mx-auto p-4">
+            <div className="flex gap-4 items-start">
+              <div className="flex-1">
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {gameState.players.map((player) => (
+                    <div key={player.id} className="flex-shrink-0" style={{ width: '280px' }}>
+                      <PlayerCard
+                        player={player}
+                        isActive={player.id === currentPlayerId}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Players</h3>
-              {gameState.players.map((player) => (
-                <PlayerCard
-                  key={player.id}
-                  player={player}
-                  isActive={player.id === currentPlayerId}
-                />
-              ))}
+              <div className="flex-shrink-0" style={{ width: '320px' }}>
+                {currentPlayer && (
+                  <GameControls
+                    onBet={handleBet}
+                    onHit={handleHit}
+                    onStand={handleStand}
+                    onNextRound={handleNextRound}
+                    phase={gameState.phase}
+                    isActivePlayer={isActivePlayer}
+                    currentBet={currentPlayer.currentBet}
+                    availableChips={currentPlayer.chips}
+                    minBet={gameState.minBet}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
