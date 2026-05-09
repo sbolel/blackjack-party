@@ -9,7 +9,7 @@ import { AnalyticsDashboard } from './components/AnalyticsDashboard'
 import { Button } from './components/ui/button'
 import { Badge } from './components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog'
-import { AppGameState, AppPlayer, GameState, Player, BetHistoryEntry } from './lib/types'
+import { AppGameState, AppPlayer, Player, BetHistoryEntry } from './lib/types'
 import { 
   createDeck, 
   createPlayer, 
@@ -84,21 +84,16 @@ function App() {
   
   const isOnlineMode = gameState?.isOnline || false
   
-  const { publishState } = useGameSync({
+  const { publishState: publishAppState } = useGameSync<AppGameState>({
     roomId: gameState?.roomId || '',
     playerId: currentPlayerId || '',
     onStateUpdate: (newState) => {
-      const appState = newState as unknown as AppGameState
-      if (isOnlineMode && gameState?.roomId === appState.roomId) {
-        setGameState(appState)
+      if (isOnlineMode && gameState?.roomId === newState.roomId) {
+        setGameState(newState)
       }
     },
     enabled: isOnlineMode
   })
-
-  const publishAppState = useCallback((state: AppGameState) => {
-    return publishState(state as unknown as GameState)
-  }, [publishState])
 
   const startLocalGame = useCallback((config: {
     numPlayers: number
@@ -293,6 +288,7 @@ function App() {
   const dealInitialCards = useCallback(() => {
     setGameState((current) => {
       if (!current || current.phase !== 'dealing') return current || null
+      if (current.isOnline && !isHost) return current
 
       let deck = [...current.deck]
       const playersInRound = current.players.filter(hasPlacedBet)
@@ -343,14 +339,15 @@ function App() {
 
       return newState
     })
-  }, [setGameState, publishAppState, setCurrentPlayerId])
+  }, [isHost, setGameState, publishAppState, setCurrentPlayerId])
 
   useEffect(() => {
     if (gameState?.phase !== 'dealing') return
+    if (gameState.isOnline && !isHost) return
 
     const timer = window.setTimeout(() => dealInitialCards(), 500)
     return () => window.clearTimeout(timer)
-  }, [gameState?.phase, dealInitialCards])
+  }, [gameState?.phase, gameState?.isOnline, isHost, dealInitialCards])
 
   const handleHit = useCallback(() => {
     if (!gameState) return
@@ -509,6 +506,7 @@ function App() {
   const moveToNextPlayer = useCallback(() => {
     setGameState((current) => {
       if (!current || current.phase !== 'playing') return current || null
+      if (current.isOnline && !isHost) return current
 
       const nextPlayerIndex = findNextIndex(current.players, current.currentPlayerIndex, isPlayablePlayer)
 
@@ -525,10 +523,11 @@ function App() {
       if (current.isOnline) publishAppState(newState)
       return newState
     })
-  }, [setGameState, publishAppState, setCurrentPlayerId])
+  }, [isHost, setGameState, publishAppState, setCurrentPlayerId])
 
   useEffect(() => {
     if (gameState?.phase !== 'playing') return
+    if (gameState.isOnline && !isHost) return
 
     const activePlayer = gameState.players[gameState.currentPlayerIndex]
     if (!activePlayer || isPlayablePlayer(activePlayer)) return
@@ -536,11 +535,12 @@ function App() {
     const delay = activePlayer.status === 'bust' ? 1000 : 500
     const timer = window.setTimeout(() => moveToNextPlayer(), delay)
     return () => window.clearTimeout(timer)
-  }, [gameState?.phase, gameState?.players, gameState?.currentPlayerIndex, moveToNextPlayer])
+  }, [gameState?.phase, gameState?.isOnline, gameState?.players, gameState?.currentPlayerIndex, isHost, moveToNextPlayer])
 
   const playDealerTurn = useCallback(() => {
     setGameState((current) => {
       if (!current) return null
+      if (current.isOnline && !isHost) return current
       const newState = { ...current, dealerRevealed: true }
       if (current.isOnline) publishAppState(newState)
       return newState
@@ -565,14 +565,15 @@ function App() {
 
       setTimeout(() => determineResults(), 1500)
     }, 1000)
-  }, [setGameState, publishAppState, determineResults])
+  }, [isHost, setGameState, publishAppState, determineResults])
 
   useEffect(() => {
     if (gameState?.phase !== 'dealer-turn' || gameState.dealerRevealed) return
+    if (gameState.isOnline && !isHost) return
 
     const timer = window.setTimeout(() => playDealerTurn(), 500)
     return () => window.clearTimeout(timer)
-  }, [gameState?.phase, gameState?.dealerRevealed, playDealerTurn])
+  }, [gameState?.phase, gameState?.isOnline, gameState?.dealerRevealed, isHost, playDealerTurn])
 
   const handleNextRound = useCallback(() => {
     if (!gameState) return

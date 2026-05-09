@@ -1,18 +1,18 @@
 import { useEffect, useCallback, useRef } from 'react'
-import { GameState } from '@/lib/types'
 
-type SyncedGameState = GameState & {
+type SyncedState = {
+  roomId: string
   lastUpdate?: number
 }
 
-interface GameSyncOptions {
+interface GameSyncOptions<TState extends SyncedState> {
   roomId: string
   playerId: string
-  onStateUpdate: (state: GameState) => void
+  onStateUpdate: (state: TState) => void
   enabled: boolean
 }
 
-export function useGameSync({ roomId, playerId, onStateUpdate, enabled }: GameSyncOptions) {
+export function useGameSync<TState extends SyncedState>({ roomId, playerId, onStateUpdate, enabled }: GameSyncOptions<TState>) {
   const pollIntervalRef = useRef<number | null>(null)
   const lastUpdateRef = useRef<number>(0)
 
@@ -21,7 +21,7 @@ export function useGameSync({ roomId, playerId, onStateUpdate, enabled }: GameSy
 
     try {
       const key = `game-room-${roomId}`
-      const state = await spark.kv.get<SyncedGameState>(key)
+      const state = await spark.kv.get<TState>(key)
       
       if (state) {
         const stateTimestamp = state.lastUpdate || 0
@@ -35,7 +35,7 @@ export function useGameSync({ roomId, playerId, onStateUpdate, enabled }: GameSy
     }
   }, [roomId, enabled, onStateUpdate])
 
-  const publishState = useCallback(async (state: GameState) => {
+  const publishState = useCallback(async (state: TState) => {
     if (!enabled || !roomId) return
 
     try {
