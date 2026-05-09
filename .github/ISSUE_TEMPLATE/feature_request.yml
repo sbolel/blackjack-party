@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest an improvement for blackjack-3d.
+title: "Feature: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What player, contributor, or maintainer need would this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the smallest useful version of the idea.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Blackjack rules or round flow
+        - Local hot-seat play
+        - Multiplayer room flow
+        - 3D table, cards, or animation
+        - Accessibility or responsive UI
+        - Documentation or contributor experience
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Suggested acceptance checks
+      placeholder: "Example: local hot-seat smoke test still passes; chips settle correctly after dealer reveal."
