@@ -535,7 +535,7 @@ export function settleRound(state: GameState): EngineResult<GameState> {
     }
 
     let finalStatus: Player['status']
-    let payout = 0
+    let payout: number
 
     if (player.status === 'bust') {
       finalStatus = 'lost'
