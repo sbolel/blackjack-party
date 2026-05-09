@@ -1,12 +1,12 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Player } from '@/lib/types'
+import { AppPlayer } from '@/lib/types'
 import { CurrencyDollar, Crown } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { HandValue } from './HandValue'
 
 interface PlayerCardProps {
-  player: Player
+  player: AppPlayer
   isActive: boolean
   isDealer?: boolean
 }

@@ -2,7 +2,6 @@ import { GameState, Player, PhysicalCard } from './types'
 import { 
   dealCardFromShoe, 
   discardCards, 
-  calculateHandValue, 
   isBlackjack, 
   isBust,
   shouldDealerHit,
@@ -469,7 +468,7 @@ export function playDealerTurn(state: GameState): EngineResult<GameState> {
 
   let currentShoe = state.shoe
   let dealerHand = [...state.dealerHand]
-  let dealerRevealed = true
+  const dealerRevealed = true
 
   const allPlayersBust = state.players.every(p => p.status === 'bust')
   

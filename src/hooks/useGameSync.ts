@@ -1,6 +1,10 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { GameState } from '@/lib/types'
 
+type SyncedGameState = GameState & {
+  lastUpdate?: number
+}
+
 interface GameSyncOptions {
   roomId: string
   playerId: string
@@ -17,10 +21,10 @@ export function useGameSync({ roomId, playerId, onStateUpdate, enabled }: GameSy
 
     try {
       const key = `game-room-${roomId}`
-      const state = await spark.kv.get<GameState>(key)
+      const state = await spark.kv.get<SyncedGameState>(key)
       
       if (state) {
-        const stateTimestamp = (state as any).lastUpdate || 0
+        const stateTimestamp = state.lastUpdate || 0
         if (stateTimestamp > lastUpdateRef.current) {
           lastUpdateRef.current = stateTimestamp
           onStateUpdate(state)
