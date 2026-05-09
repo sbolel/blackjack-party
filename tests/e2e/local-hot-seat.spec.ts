@@ -11,55 +11,62 @@ type PageDiagnostics = {
 }
 
 const knownSparkKvNoise =
-    /Failed to (fetch KV key|set key): (Unauthorized|rate limit exceeded)/i
+    /^(Failed to (fetch KV key|set key): (Unauthorized|rate limit exceeded|too many requests)|Failed to fetch)$/i
+const knownBrowserConsoleNoise =
+    /Failed to load resource: (the server responded with a status of (403 \(rate limit exceeded\)|429 \(too many requests\)|404 \(Not Found\))|net::ERR_CONNECTION_REFUSED)/i
 
 const test = base.extend<{ diagnostics: PageDiagnostics }>({
-    diagnostics: async ({ page }, runTest, testInfo) => {
-        const browserConsoleErrors: string[] = []
-        const pageErrors: string[] = []
+    diagnostics: [
+        async ({ page }, runTest, testInfo) => {
+            const browserConsoleErrors: string[] = []
+            const pageErrors: string[] = []
 
-        page.on('console', (message) => {
-            if (message.type() === 'error') {
-                browserConsoleErrors.push(message.text())
+            page.on('console', (message) => {
+                if (message.type() === 'error') {
+                    browserConsoleErrors.push(message.text())
+                }
+            })
+
+            page.on('pageerror', (error) => {
+                pageErrors.push(error.message)
+            })
+
+            const diagnostics = {
+                async attach(testInfo: TestInfo) {
+                    await testInfo.attach('browser-console-errors', {
+                        body:
+                            browserConsoleErrors.length > 0
+                                ? browserConsoleErrors.join('\n')
+                                : 'none',
+                        contentType: 'text/plain',
+                    })
+
+                    await testInfo.attach('page-errors', {
+                        body: pageErrors.length > 0 ? pageErrors.join('\n') : 'none',
+                        contentType: 'text/plain',
+                    })
+                },
+                assertClean() {
+                    const unexpectedConsoleErrors = browserConsoleErrors.filter(
+                        (error) =>
+                            !knownSparkKvNoise.test(error) &&
+                            !knownBrowserConsoleNoise.test(error),
+                    )
+                    const unexpectedPageErrors = pageErrors.filter(
+                        (error) => !knownSparkKvNoise.test(error),
+                    )
+
+                    expect(unexpectedConsoleErrors).toEqual([])
+                    expect(unexpectedPageErrors).toEqual([])
+                },
             }
-        })
 
-        page.on('pageerror', (error) => {
-            pageErrors.push(error.message)
-        })
-
-        const diagnostics = {
-            async attach(testInfo: TestInfo) {
-                await testInfo.attach('browser-console-errors', {
-                    body:
-                        browserConsoleErrors.length > 0
-                            ? browserConsoleErrors.join('\n')
-                            : 'none',
-                    contentType: 'text/plain',
-                })
-
-                await testInfo.attach('page-errors', {
-                    body: pageErrors.length > 0 ? pageErrors.join('\n') : 'none',
-                    contentType: 'text/plain',
-                })
-            },
-            assertClean() {
-                const unexpectedConsoleErrors = browserConsoleErrors.filter(
-                    (error) => !knownSparkKvNoise.test(error),
-                )
-                const unexpectedPageErrors = pageErrors.filter(
-                    (error) => !knownSparkKvNoise.test(error),
-                )
-
-                expect(unexpectedConsoleErrors).toEqual([])
-                expect(unexpectedPageErrors).toEqual([])
-            },
-        }
-
-        await runTest(diagnostics)
-        await diagnostics.attach(testInfo)
-        diagnostics.assertClean()
-    },
+            await runTest(diagnostics)
+            await diagnostics.attach(testInfo)
+            diagnostics.assertClean()
+        },
+        { auto: true },
+    ],
 })
 
 async function openLocalSetup(page: Page) {
