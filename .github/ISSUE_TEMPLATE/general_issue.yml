@@ -1,5 +1,5 @@
 name: General issue
-description: Ask a question or raise maintenance work that is not a bug, feature, or security report.
+description: Ask a blackjack-3d question or raise maintenance work that is not a bug, feature, or security report.
 title: "Issue: "
 labels: ["triage"]
 body:
@@ -7,7 +7,7 @@ body:
     id: topic
     attributes:
       label: Topic
-      description: What should maintainers know?
+      description: What should blackjack-3d maintainers know?
     validations:
       required: true
   - type: textarea
