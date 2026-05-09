@@ -1,4 +1,4 @@
-import { GameState, Player, PhysicalCard, Shoe } from './types'
+import { GameState } from './types'
 import { calculateHandValue } from './gameLogic'
 
 export interface ValidationError {
@@ -107,20 +107,6 @@ function validateChipInvariants(state: GameState): ValidationError[] {
         { playerId: player.id, bet: player.currentBet, maxBet: state.rules.maxBet }
       ))
     }
-  }
-  
-  return errors
-}
-
-function validatePhaseTransition(state: GameState, expectedPhases: GameState['phase'][]): ValidationError[] {
-  const errors: ValidationError[] = []
-  
-  if (!expectedPhases.includes(state.phase)) {
-    errors.push(createError(
-      'INVALID_PHASE',
-      `Game is in invalid phase: ${state.phase}`,
-      { phase: state.phase, expectedPhases }
-    ))
   }
   
   return errors

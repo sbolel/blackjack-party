@@ -1,5 +1,5 @@
 import { useKV } from '@github/spark/hooks'
-import { BetHistoryEntry, PlayerStatistics } from '@/lib/types'
+import { BetHistoryEntry } from '@/lib/types'
 import { calculatePlayerStatistics, getRecentHistory, aggregateStatsByDay } from '@/lib/analytics'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'

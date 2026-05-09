@@ -71,6 +71,26 @@ export interface GameState {
   minBet?: number
 }
 
+export interface AppPlayer extends Omit<Player, 'hand'> {
+  hand: Card[]
+}
+
+export interface AppGameState {
+  roomId: string
+  players: AppPlayer[]
+  deck: Card[]
+  currentPlayerIndex: number
+  phase: GameState['phase']
+  dealerHand: Card[]
+  dealerRevealed: boolean
+  roundNumber: number
+  maxPlayers: number
+  isOnline: boolean
+  startingChips: number
+  minBet: number
+  lastUpdate?: number
+}
+
 export type GameMode = 'online' | 'local'
 
 export interface RoomConfig {

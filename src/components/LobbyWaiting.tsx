@@ -2,13 +2,13 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Copy, SignOut, Play, Users } from '@phosphor-icons/react'
-import { Player } from '@/lib/types'
+import { AppPlayer } from '@/lib/types'
 import { toast } from 'sonner'
 
 interface LobbyWaitingProps {
   roomId: string
   roomName: string
-  players: Player[]
+  players: AppPlayer[]
   maxPlayers: number
   isHost: boolean
   onStartGame: () => void

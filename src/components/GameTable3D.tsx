@@ -1,11 +1,11 @@
-import { Player, Card } from '@/lib/types'
+import { AppPlayer, Card } from '@/lib/types'
 import { getCardSymbol, getCardColor, calculateHandValues } from '@/lib/gameLogic'
 import { Badge } from './ui/badge'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
 
 interface GameTable3DProps {
-  players: Player[]
+  players: AppPlayer[]
   dealerHand: Card[]
   dealerRevealed: boolean
   currentPlayerId?: string
@@ -54,7 +54,6 @@ function HandValueDisplay({ hand, revealed = true }: HandValueDisplayProps) {
 
   const { low, high, hasAce } = calculateHandValues(hand)
   const displayValue = low
-  const isBust = low > 21
   const isBlackjack = low === 21
 
   useEffect(() => {
@@ -157,8 +156,11 @@ function PlayingCard({ card, faceUp, delay = 0 }: { card: Card; faceUp: boolean;
 }
 
 export function GameTable3D({ players, dealerHand, dealerRevealed, currentPlayerId }: GameTable3DProps) {
-  const isValidCard = (card: any): card is Card => {
-    return !!(card && typeof card === 'object' && card.id && card.suit && card.rank)
+  const isValidCard = (card: unknown): card is Card => {
+    if (!card || typeof card !== 'object') return false
+
+    const candidate = card as Partial<Card>
+    return !!(candidate.id && candidate.suit && candidate.rank)
   }
 
   const validDealerHand = Array.isArray(dealerHand) ? dealerHand.filter(isValidCard) : []
