@@ -46,7 +46,6 @@ export function HandValue({ hand, className = '' }: HandValueProps) {
   const [previousValue, setPreviousValue] = useState<number | null>(null)
 
   const displayValue = low
-  const isBust = low > 21
   const isBlackjack = low === 21
 
   useEffect(() => {

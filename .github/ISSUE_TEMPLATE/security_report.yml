@@ -1,0 +1,48 @@
+name: Security report
+description: Report non-sensitive blackjack-party security concerns or ask where to route a sensitive finding.
+title: "Security: "
+labels: ["security", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not publish active exploit details, private room data, tokens, or proof-of-concept code in a public issue.
+
+        If the issue appears actively exploitable, first check blackjack-party's SECURITY.md and GitHub's private vulnerability reporting option if it is available. If no private intake is available, contact the maintainer through the repository owner profile without posting exploit details publicly.
+  - type: dropdown
+    id: sensitivity
+    attributes:
+      label: Sensitivity
+      options:
+        - Non-sensitive hardening or dependency concern
+        - Potential vulnerability, details intentionally omitted
+        - Need maintainer guidance on private reporting
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Safe summary
+      description: Describe the general area without exploit steps or sensitive details.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Browser client
+        - Game room or sync state
+        - Dependencies
+        - Build or release process
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Public disclosure check
+      options:
+        - label: I have not included active exploit details, secrets, tokens, private room data, or proof-of-concept code.
+          required: true

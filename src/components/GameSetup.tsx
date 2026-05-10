@@ -1,10 +1,9 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Users, Play, SignIn, Copy } from '@phosphor-icons/react'
+import { Users, Play, SignIn } from '@phosphor-icons/react'
 import { useKV } from '@github/spark/hooks'
 import { toast } from 'sonner'
 import { useEffect, useRef } from 'react'
@@ -211,7 +210,7 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
         <div className="text-center space-y-6">
           <div>
             <h1 className="text-5xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Blackjack 3D
+              Blackjack Party
             </h1>
             <p className="text-muted-foreground text-lg">
               Experience casino blackjack with immersive 3D graphics

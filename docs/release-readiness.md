@@ -1,0 +1,41 @@
+# Release Readiness Checklist
+
+Use this checklist for the first public open-source release and near-term stabilization work.
+
+## Public Docs
+
+- README describes the current app without overclaiming multiplayer hardening.
+- `CONTRIBUTING.md` explains setup, validation, branch, commit, issue, and pull request expectations.
+- `SECURITY.md` gives project-specific vulnerability reporting guidance.
+- `CODE_OF_CONDUCT.md` sets basic participation expectations.
+- License remains MIT with the current project copyright.
+
+## Validation
+
+- `npm run validate` passes on the release branch.
+- `npm run qa:local` passes on the release branch.
+- `.github/workflows/release-validation.yml` runs the release gate in CI with Node from `.nvmrc`, `npm ci`, dependency audit, `npm run validate`, and local hot-seat Playwright QA.
+- Documentation-only changes have their changed Markdown inspected.
+
+## Gameplay Scope
+
+- Current playable flow in `src/App.tsx` remains stable.
+- Pure engine migration in `src/lib/engine.ts` is not required for the first public release unless validation proves the current path is untenable.
+- Multiplayer conflict handling is described conservatively until hardened.
+- No real-money gambling, wagering, payouts, or gambling-service integrations are added.
+
+## Release Notes
+
+- List notable gameplay, docs, test, and dependency changes.
+- Call out known limitations directly.
+- Link to validation results when available.
+- Keep Spark runtime requirements visible.
+- Treat release as GitHub repository and Spark app readiness, not npm publishing, while `package.json` remains `private: true`.
+- Verify Spark hosted app publish and visibility settings before announcing a public app URL.
+
+## Deferred Work
+
+- Full pure-engine migration.
+- Stronger multiplayer conflict handling.
+- Broader Playwright coverage beyond the local hot-seat smoke test.
+- README visual polish, screenshots, and live-app presentation details.

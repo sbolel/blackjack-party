@@ -9,7 +9,7 @@ import { AnalyticsDashboard } from './components/AnalyticsDashboard'
 import { Button } from './components/ui/button'
 import { Badge } from './components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog'
-import { GameState, Player, BetHistoryEntry } from './lib/types'
+import { AppGameState, AppPlayer, Player, BetHistoryEntry } from './lib/types'
 import { 
   createDeck, 
   createPlayer, 
@@ -28,17 +28,63 @@ import { useGameSync } from './hooks/useGameSync'
 
 type AppPhase = 'setup' | 'lobby' | 'game' | 'analytics'
 
+type InitialAppGameConfig = {
+  roomId: string
+  players: AppPlayer[]
+  phase: AppGameState['phase']
+  maxPlayers: number
+  isOnline: boolean
+  startingChips: number
+  minBet: number
+}
+
+const createAppPlayer = (name: string, chips: number): AppPlayer => ({
+  ...createPlayer(name, chips),
+  hand: []
+})
+
+const createInitialAppGame = (config: InitialAppGameConfig): AppGameState => ({
+  roomId: config.roomId,
+  players: config.players,
+  deck: createDeck(),
+  currentPlayerIndex: 0,
+  phase: config.phase,
+  dealerHand: [],
+  dealerRevealed: false,
+  roundNumber: 1,
+  maxPlayers: config.maxPlayers,
+  isOnline: config.isOnline,
+  startingChips: config.startingChips,
+  minBet: config.minBet
+})
+
+const withLastUpdate = (state: AppGameState): AppGameState => ({
+  ...state,
+  lastUpdate: Date.now()
+})
+
+const canJoinRound = (player: AppPlayer) => player.status !== 'lost'
+const isPlayablePlayer = (player: AppPlayer) => player.status === 'playing'
+const hasPlacedBet = (player: AppPlayer) => player.currentBet > 0
+const needsBet = (player: AppPlayer) => canJoinRound(player) && !hasPlacedBet(player)
+
+const findNextIndex = (
+  players: AppPlayer[],
+  currentIndex: number,
+  predicate: (player: AppPlayer) => boolean
+) => players.findIndex((player, index) => index > currentIndex && predicate(player))
+
 function App() {
   const [appPhase, setAppPhase] = useState<AppPhase>('setup')
-  const [gameState, setGameState] = useKV<GameState | null>('blackjack-game', null)
+  const [gameState, setGameState] = useKV<AppGameState | null>('blackjack-game', null)
   const [currentPlayerId, setCurrentPlayerId] = useKV<string>('current-player-id', '')
-  const [betHistory, setBetHistory] = useKV<BetHistoryEntry[]>('bet-history', [])
+  const [, setBetHistory] = useKV<BetHistoryEntry[]>('bet-history', [])
   const [roomName, setRoomName] = useState('')
   const [isHost, setIsHost] = useState(false)
   
   const isOnlineMode = gameState?.isOnline || false
   
-  const { publishState } = useGameSync({
+  const { publishState: publishAppState } = useGameSync<AppGameState>({
     roomId: gameState?.roomId || '',
     playerId: currentPlayerId || '',
     onStateUpdate: (newState) => {
@@ -55,24 +101,19 @@ function App() {
     startingChips: number
     minBet: number
   }) => {
-    const players: Player[] = config.playerNames.map(name => 
-      createPlayer(name, config.startingChips)
+    const players = config.playerNames.map(name =>
+      createAppPlayer(name, config.startingChips)
     )
     
-    const newGame: GameState = {
+    const newGame = createInitialAppGame({
       roomId: generateRoomId(),
       players,
-      deck: createDeck(),
-      currentPlayerIndex: 0,
       phase: 'betting',
-      dealerHand: [],
-      dealerRevealed: false,
-      roundNumber: 1,
       maxPlayers: config.numPlayers,
       isOnline: false,
       startingChips: config.startingChips,
       minBet: config.minBet
-    }
+    })
     
     setGameState(newGame)
     setCurrentPlayerId(players[0].id)
@@ -91,25 +132,20 @@ function App() {
     const user = await spark.user()
     const playerName = user.login || 'Host'
     
-    const player = createPlayer(playerName, config.startingChips)
+    const player = createAppPlayer(playerName, config.startingChips)
     player.id = playerId
     
-    const newGame: GameState = {
+    const newGame = createInitialAppGame({
       roomId,
       players: [player],
-      deck: createDeck(),
-      currentPlayerIndex: 0,
       phase: 'lobby',
-      dealerHand: [],
-      dealerRevealed: false,
-      roundNumber: 1,
       maxPlayers: config.maxPlayers,
       isOnline: true,
       startingChips: config.startingChips,
       minBet: config.minBet
-    }
+    })
     
-    await spark.kv.set(`game-room-${roomId}`, newGame)
+    await spark.kv.set(`game-room-${roomId}`, withLastUpdate(newGame))
     await spark.kv.set(`room-meta-${roomId}`, {
       roomName: config.roomName,
       createdAt: Date.now()
@@ -125,7 +161,7 @@ function App() {
 
   const joinOnlineRoom = useCallback(async (roomId: string, playerName: string) => {
     try {
-      const existingGame = await spark.kv.get<GameState>(`game-room-${roomId}`)
+      const existingGame = await spark.kv.get<AppGameState>(`game-room-${roomId}`)
       
       if (!existingGame) {
         toast.error('Room not found')
@@ -143,15 +179,15 @@ function App() {
       }
       
       const playerId = generatePlayerId()
-      const newPlayer = createPlayer(playerName, existingGame.startingChips)
+      const newPlayer = createAppPlayer(playerName, existingGame.startingChips)
       newPlayer.id = playerId
       
-      const updatedGame: GameState = {
+      const updatedGame: AppGameState = {
         ...existingGame,
         players: [...existingGame.players, newPlayer]
       }
       
-      await spark.kv.set(`game-room-${roomId}`, updatedGame)
+      await spark.kv.set(`game-room-${roomId}`, withLastUpdate(updatedGame))
       
       const roomMeta = await spark.kv.get<{ roomName: string }>(`room-meta-${roomId}`)
       
@@ -170,17 +206,17 @@ function App() {
   const startOnlineGame = useCallback(async () => {
     if (!gameState || !isHost) return
     
-    const updatedGame: GameState = {
+    const updatedGame: AppGameState = {
       ...gameState,
       phase: 'betting',
       currentPlayerIndex: 0
     }
     
     setGameState(updatedGame)
-    await publishState(updatedGame)
+    await publishAppState(updatedGame)
     setAppPhase('game')
     toast.success('Game started! Place your bets.')
-  }, [gameState, isHost, setGameState, publishState])
+  }, [gameState, isHost, setGameState, publishAppState])
 
   const leaveGame = useCallback(async () => {
     if (gameState?.isOnline && gameState.roomId) {
@@ -205,51 +241,70 @@ function App() {
 
     setGameState((current) => {
       if (!current) return null
+      if (current.phase !== 'betting') return current
+
+      const activePlayer = current.players[current.currentPlayerIndex]
+      if (!activePlayer || activePlayer.id !== currentPlayerId || !needsBet(activePlayer)) {
+        return current
+      }
       
       const updatedPlayers = current.players.map(p => {
         if (p.id === currentPlayerId && p.currentBet === 0) {
+          const bet = Math.min(amount, p.chips)
           return {
             ...p,
-            currentBet: Math.min(amount, p.chips),
-            chips: p.chips - Math.min(amount, p.chips)
+            currentBet: bet,
+            chips: p.chips - bet
           }
         }
         return p
       })
 
-      const allBetsPlaced = updatedPlayers.every(p => p.currentBet > 0)
+      const activeRoundPlayers = updatedPlayers.filter(canJoinRound)
+      const allBetsPlaced = activeRoundPlayers.length > 0 && activeRoundPlayers.every(hasPlacedBet)
+      const nextPlayerIndex = findNextIndex(updatedPlayers, current.currentPlayerIndex, needsBet)
       
       const newState = { 
         ...current, 
         players: updatedPlayers, 
+        currentPlayerIndex: allBetsPlaced || nextPlayerIndex === -1 ? current.currentPlayerIndex : nextPlayerIndex,
         phase: allBetsPlaced ? ('dealing' as const) : current.phase
       }
       
       if (current.isOnline) {
-        publishState(newState)
+        publishAppState(newState)
       }
       
-      if (allBetsPlaced) {
-        setTimeout(() => dealInitialCards(), 500)
-      } else {
-        const nextPlayerIndex = updatedPlayers.findIndex((p, idx) => 
-          idx > current.currentPlayerIndex && p.currentBet === 0
-        )
-        if (nextPlayerIndex !== -1) {
+      if (!allBetsPlaced && nextPlayerIndex !== -1) {
+        if (!current.isOnline) {
           setCurrentPlayerId(updatedPlayers[nextPlayerIndex].id)
         }
       }
 
       return newState
     })
-  }, [gameState, currentPlayerId, setGameState, publishState, setCurrentPlayerId])
+  }, [gameState, currentPlayerId, setGameState, publishAppState, setCurrentPlayerId])
 
   const dealInitialCards = useCallback(() => {
     setGameState((current) => {
       if (!current || current.phase !== 'dealing') return current || null
+      if (current.isOnline && !isHost) return current
 
       let deck = [...current.deck]
+      const playersInRound = current.players.filter(hasPlacedBet)
+      const cardsNeeded = (playersInRound.length * 2) + 2
+      if (deck.length < cardsNeeded) {
+        deck = createDeck()
+      }
+
       const updatedPlayers = current.players.map(p => {
+        if (!hasPlacedBet(p)) {
+          return {
+            ...p,
+            hand: []
+          }
+        }
+
         const card1 = deck.pop()!
         const card2 = deck.pop()!
         return {
@@ -263,33 +318,56 @@ function App() {
       const dealerCard2 = deck.pop()!
       const dealerHand = [dealerCard1, dealerCard2]
 
-      setCurrentPlayerId(updatedPlayers[0].id)
+      const firstPlayableIndex = updatedPlayers.findIndex(isPlayablePlayer)
+      const nextPlayerIndex = firstPlayableIndex === -1 ? 0 : firstPlayableIndex
+      if (!current.isOnline) {
+        setCurrentPlayerId(updatedPlayers[nextPlayerIndex]?.id || '')
+      }
 
       const newState = {
         ...current,
         players: updatedPlayers,
         deck,
         dealerHand,
-        phase: 'playing' as const,
-        currentPlayerIndex: 0
+        phase: firstPlayableIndex === -1 ? ('dealer-turn' as const) : ('playing' as const),
+        currentPlayerIndex: nextPlayerIndex
       }
       
       if (current.isOnline) {
-        publishState(newState)
+        publishAppState(newState)
       }
 
       return newState
     })
-  }, [setGameState, publishState, setCurrentPlayerId])
+  }, [isHost, setGameState, publishAppState, setCurrentPlayerId])
+
+  useEffect(() => {
+    if (gameState?.phase !== 'dealing') return
+    if (gameState.isOnline && !isHost) return
+
+    const timer = window.setTimeout(() => dealInitialCards(), 500)
+    return () => window.clearTimeout(timer)
+  }, [gameState?.phase, gameState?.isOnline, isHost, dealInitialCards])
 
   const handleHit = useCallback(() => {
     if (!gameState) return
 
     setGameState((current) => {
       if (!current) return null
+      if (current.phase !== 'playing') return current
+
+      const activePlayer = current.players[current.currentPlayerIndex]
+      if (!activePlayer || activePlayer.id !== currentPlayerId || !isPlayablePlayer(activePlayer)) {
+        return current
+      }
 
       let deck = [...current.deck]
-      const newCard = deck.pop()!
+      if (deck.length === 0) {
+        deck = createDeck()
+      }
+
+      const newCard = deck.pop()
+      if (!newCard) return current
       
       const updatedPlayers = current.players.map(p => {
         if (p.id === currentPlayerId) {
@@ -308,24 +386,29 @@ function App() {
       const currentPlayer = updatedPlayers.find(p => p.id === currentPlayerId)
       if (currentPlayer?.status === 'bust') {
         toast.error(`${currentPlayer.name} busted!`)
-        setTimeout(() => moveToNextPlayer(), 1000)
       }
 
       const newState = { ...current, players: updatedPlayers, deck }
       
       if (current.isOnline) {
-        publishState(newState)
+        publishAppState(newState)
       }
 
       return newState
     })
-  }, [gameState, currentPlayerId, setGameState, publishState])
+  }, [gameState, currentPlayerId, setGameState, publishAppState])
 
   const handleStand = useCallback(() => {
     if (!gameState) return
 
     setGameState((current) => {
       if (!current) return null
+      if (current.phase !== 'playing') return current
+
+      const activePlayer = current.players[current.currentPlayerIndex]
+      if (!activePlayer || activePlayer.id !== currentPlayerId || !isPlayablePlayer(activePlayer)) {
+        return current
+      }
 
       const updatedPlayers = current.players.map(p => {
         if (p.id === currentPlayerId) {
@@ -337,70 +420,13 @@ function App() {
       const newState = { ...current, players: updatedPlayers }
       
       if (current.isOnline) {
-        publishState(newState)
+        publishAppState(newState)
       }
 
       return newState
     })
 
-    setTimeout(() => moveToNextPlayer(), 500)
-  }, [gameState, currentPlayerId, setGameState, publishState])
-
-  const moveToNextPlayer = useCallback(() => {
-    if (!gameState) return
-
-    const nextPlayerIndex = gameState.players.findIndex((p, idx) => 
-      idx > gameState.currentPlayerIndex && 
-      (p.status === 'playing' || p.status === 'waiting')
-    )
-
-    if (nextPlayerIndex === -1) {
-      setTimeout(() => playDealerTurn(), 500)
-      setGameState((current) => {
-        if (!current) return null
-        const newState = { ...current, phase: 'dealer-turn' as const }
-        if (current.isOnline) publishState(newState)
-        return newState
-      })
-    } else {
-      setCurrentPlayerId(gameState.players[nextPlayerIndex].id)
-      setGameState((current) => {
-        if (!current) return null
-        const newState = { ...current, currentPlayerIndex: nextPlayerIndex }
-        if (current.isOnline) publishState(newState)
-        return newState
-      })
-    }
-  }, [gameState, setGameState, publishState, setCurrentPlayerId])
-
-  const playDealerTurn = useCallback(() => {
-    setGameState((current) => {
-      if (!current) return null
-      const newState = { ...current, dealerRevealed: true }
-      if (current.isOnline) publishState(newState)
-      return newState
-    })
-
-    setTimeout(() => {
-      setGameState((current) => {
-        if (!current) return null
-
-        let deck = [...current.deck]
-        let dealerHand = [...current.dealerHand]
-
-        while (shouldDealerHit(dealerHand) && deck.length > 0) {
-          const newCard = deck.pop()!
-          dealerHand.push(newCard)
-        }
-
-        const newState = { ...current, dealerHand, deck }
-        if (current.isOnline) publishState(newState)
-        return newState
-      })
-
-      setTimeout(() => determineResults(), 1500)
-    }, 1000)
-  }, [setGameState, publishState])
+  }, [gameState, currentPlayerId, setGameState, publishAppState])
 
   const determineResults = useCallback(() => {
     if (!gameState) return
@@ -409,6 +435,10 @@ function App() {
       if (!current) return null
 
       const updatedPlayers = current.players.map(p => {
+        if (!hasPlacedBet(p)) {
+          return p
+        }
+
         if (p.status === 'bust') {
           return { ...p, status: 'lost' as const }
         }
@@ -431,16 +461,12 @@ function App() {
       const newState = { ...current, players: updatedPlayers, phase: 'results' as const }
       
       if (current.isOnline) {
-        publishState(newState)
+        publishAppState(newState)
       }
 
-      return newState
-    })
-
-    if (gameState) {
-      const newEntries: BetHistoryEntry[] = gameState.players.map(p => {
+      const newEntries: BetHistoryEntry[] = current.players.filter(hasPlacedBet).map(p => {
         const isBustStatus = p.status === 'bust'
-        const result = isBustStatus ? 'lose' : determineWinner(p.hand, gameState.dealerHand)
+        const result = isBustStatus ? 'lose' : determineWinner(p.hand, current.dealerHand)
         const payout = calculatePayout(p.currentBet, result, isBlackjack(p.hand))
         const profit = payout - p.currentBet
         
@@ -451,27 +477,103 @@ function App() {
         else betResult = 'push'
 
         return {
-          id: `${gameState.roomId}-${gameState.roundNumber}-${p.id}`,
+          id: `${current.roomId}-${current.roundNumber}-${p.id}`,
           playerId: p.id,
           playerName: p.name,
-          roomId: gameState.roomId,
-          roundNumber: gameState.roundNumber,
+          roomId: current.roomId,
+          roundNumber: current.roundNumber,
           betAmount: p.currentBet,
           result: betResult,
           payout,
           profit,
           playerHandValue: calculateHandValue(p.hand),
-          dealerHandValue: calculateHandValue(gameState.dealerHand),
+          dealerHandValue: calculateHandValue(current.dealerHand),
           timestamp: Date.now(),
           isBlackjack: isBlackjack(p.hand)
         }
       })
 
-      setBetHistory((current) => [...(current || []), ...newEntries])
-    }
+      if (newEntries.length > 0) {
+        setBetHistory((history) => [...(history || []), ...newEntries])
+      }
+
+      return newState
+    })
 
     toast.success('Round complete!')
-  }, [gameState, setGameState, publishState, setBetHistory])
+  }, [gameState, setGameState, publishAppState, setBetHistory])
+
+  const moveToNextPlayer = useCallback(() => {
+    setGameState((current) => {
+      if (!current || current.phase !== 'playing') return current || null
+      if (current.isOnline && !isHost) return current
+
+      const nextPlayerIndex = findNextIndex(current.players, current.currentPlayerIndex, isPlayablePlayer)
+
+      if (nextPlayerIndex === -1) {
+        const newState = { ...current, phase: 'dealer-turn' as const }
+        if (current.isOnline) publishAppState(newState)
+        return newState
+      }
+
+      if (!current.isOnline) {
+        setCurrentPlayerId(current.players[nextPlayerIndex].id)
+      }
+      const newState = { ...current, currentPlayerIndex: nextPlayerIndex }
+      if (current.isOnline) publishAppState(newState)
+      return newState
+    })
+  }, [isHost, setGameState, publishAppState, setCurrentPlayerId])
+
+  useEffect(() => {
+    if (gameState?.phase !== 'playing') return
+    if (gameState.isOnline && !isHost) return
+
+    const activePlayer = gameState.players[gameState.currentPlayerIndex]
+    if (!activePlayer || isPlayablePlayer(activePlayer)) return
+
+    const delay = activePlayer.status === 'bust' ? 1000 : 500
+    const timer = window.setTimeout(() => moveToNextPlayer(), delay)
+    return () => window.clearTimeout(timer)
+  }, [gameState?.phase, gameState?.isOnline, gameState?.players, gameState?.currentPlayerIndex, isHost, moveToNextPlayer])
+
+  const playDealerTurn = useCallback(() => {
+    setGameState((current) => {
+      if (!current) return null
+      if (current.isOnline && !isHost) return current
+      const newState = { ...current, dealerRevealed: true }
+      if (current.isOnline) publishAppState(newState)
+      return newState
+    })
+
+    setTimeout(() => {
+      setGameState((current) => {
+        if (!current) return null
+
+        const deck = [...current.deck]
+        const dealerHand = [...current.dealerHand]
+
+        while (shouldDealerHit(dealerHand) && deck.length > 0) {
+          const newCard = deck.pop()!
+          dealerHand.push(newCard)
+        }
+
+        const newState = { ...current, dealerHand, deck }
+        if (current.isOnline) publishAppState(newState)
+        return newState
+      })
+
+      setTimeout(() => determineResults(), 1500)
+    }, 1000)
+  }, [isHost, setGameState, publishAppState, determineResults])
+
+  useEffect(() => {
+    if (gameState?.phase !== 'dealer-turn' || gameState.dealerRevealed) return
+    if (gameState.isOnline && !isHost) return
+
+    const timer = window.setTimeout(() => playDealerTurn(), 500)
+    return () => window.clearTimeout(timer)
+  }, [gameState?.phase, gameState?.isOnline, gameState?.dealerRevealed, isHost, playDealerTurn])
 
   const handleNextRound = useCallback(() => {
     if (!gameState) return
@@ -483,7 +585,7 @@ function App() {
       setGameState((current) => {
         if (!current) return null
         const newState = { ...current, phase: 'game-over' as const }
-        if (current.isOnline) publishState(newState)
+        if (current.isOnline) publishAppState(newState)
         return newState
       })
       return
@@ -500,6 +602,8 @@ function App() {
       }))
 
       const newDeck = current.deck.length < 20 ? createDeck() : current.deck
+      const firstActiveIndex = updatedPlayers.findIndex(canJoinRound)
+      const nextPlayerIndex = firstActiveIndex === -1 ? 0 : firstActiveIndex
 
       const newState = {
         ...current,
@@ -508,20 +612,22 @@ function App() {
         dealerHand: [],
         dealerRevealed: false,
         phase: 'betting' as const,
-        currentPlayerIndex: 0,
+        currentPlayerIndex: nextPlayerIndex,
         roundNumber: current.roundNumber + 1
       }
       
       if (current.isOnline) {
-        publishState(newState)
+        publishAppState(newState)
       }
 
+      if (!current.isOnline) {
+        setCurrentPlayerId(updatedPlayers[nextPlayerIndex]?.id || '')
+      }
       return newState
     })
 
-    setCurrentPlayerId(activePlayers[0].id)
     toast.info('New round! Place your bets.')
-  }, [gameState, setGameState, publishState, setCurrentPlayerId])
+  }, [gameState, setGameState, publishAppState, setCurrentPlayerId])
 
   if (appPhase === 'setup') {
     return (
@@ -570,7 +676,7 @@ function App() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Blackjack 3D
+                Blackjack Party
               </h1>
               {gameState.isOnline && (
                 <Badge variant="secondary" className="flex items-center gap-1">
