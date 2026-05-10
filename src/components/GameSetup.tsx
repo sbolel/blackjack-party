@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Users, Play, SignIn, Copy } from '@phosphor-icons/react'
 import { useKV } from '@github/spark/hooks'
 import { toast } from 'sonner'
+import { useEffect, useRef } from 'react'
 
 interface GameSetupProps {
   onStartLocal: (config: {
@@ -24,7 +25,20 @@ interface GameSetupProps {
   onJoinOnline: (roomId: string, playerName: string) => void
 }
 
+interface DiscoLight {
+  x: number
+  y: number
+  color: string
+  size: number
+  angle: number
+  speed: number
+}
+
 export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSetupProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const lightsRef = useRef<DiscoLight[]>([])
+  const animationRef = useRef<number>()
+  
   const [gameMode, setGameMode] = useKV<'local' | 'online'>('setup-game-mode', 'local')
   
   const [numPlayers, setNumPlayers] = useKV<string>('setup-num-players', '2')
@@ -36,6 +50,87 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
   const [maxPlayers, setMaxPlayers] = useKV<string>('setup-max-players', '4')
   const [joinRoomId, setJoinRoomId] = useKV('setup-join-room-id', '')
   const [joinPlayerName, setJoinPlayerName] = useKV('setup-join-player-name', '')
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+    resizeCanvas()
+    window.addEventListener('resize', resizeCanvas)
+
+    const discoColors = [
+      'rgba(255, 0, 255, 0.4)',
+      'rgba(0, 255, 255, 0.4)',
+      'rgba(255, 255, 0, 0.4)',
+      'rgba(255, 0, 0, 0.4)',
+      'rgba(0, 255, 0, 0.4)',
+      'rgba(0, 0, 255, 0.4)',
+      'rgba(255, 128, 0, 0.4)',
+      'rgba(128, 0, 255, 0.4)',
+    ]
+
+    lightsRef.current = Array.from({ length: 8 }, (_, i) => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      color: discoColors[i % discoColors.length],
+      size: 200 + Math.random() * 300,
+      angle: Math.random() * Math.PI * 2,
+      speed: 0.0005 + Math.random() * 0.002
+    }))
+
+    let time = 0
+
+    const animate = () => {
+      ctx.fillStyle = 'rgba(13, 15, 22, 0.1)'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      time += 0.016
+
+      lightsRef.current.forEach((light) => {
+        light.angle += light.speed
+
+        const centerX = canvas.width / 2
+        const centerY = canvas.height / 2
+        const radius = Math.min(canvas.width, canvas.height) * 0.4
+
+        light.x = centerX + Math.cos(light.angle) * radius
+        light.y = centerY + Math.sin(light.angle) * radius
+
+        const gradient = ctx.createRadialGradient(
+          light.x, light.y, 0,
+          light.x, light.y, light.size
+        )
+        gradient.addColorStop(0, light.color)
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+
+        ctx.fillStyle = gradient
+        ctx.fillRect(
+          light.x - light.size,
+          light.y - light.size,
+          light.size * 2,
+          light.size * 2
+        )
+      })
+
+      animationRef.current = requestAnimationFrame(animate)
+    }
+
+    animate()
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas)
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+    }
+  }, [])
 
   const updatePlayerName = (index: number, name: string) => {
     setPlayerNames((currentNames) => {
@@ -106,8 +201,13 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <Card className="w-full max-w-2xl p-8">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 pointer-events-none"
+        style={{ mixBlendMode: 'screen' }}
+      />
+      <Card className="w-full max-w-2xl p-8 relative z-10 backdrop-blur-sm bg-card/80">
         <div className="text-center space-y-6">
           <div>
             <h1 className="text-5xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
