@@ -1,6 +1,6 @@
 # Architecture Notes
 
-This note describes the current public-release shape of Blackjack 3D. It is intentionally short and reflects the repository as it exists now.
+This note describes the current public-release shape of Blackjack Party. It is intentionally short and reflects the repository as it exists now.
 
 ## Runtime Shape
 

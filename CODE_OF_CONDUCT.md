@@ -2,7 +2,7 @@
 
 ## Our Standard
 
-Blackjack 3D welcomes constructive participation from people with different backgrounds and experience levels.
+Blackjack Party welcomes constructive participation from people with different backgrounds and experience levels.
 
 Examples of helpful behavior:
 

@@ -214,7 +214,7 @@ const test = base.extend<{ diagnostics: PageDiagnostics }>({
 async function openLocalSetup(page: Page) {
     await page.goto('/')
 
-    await expect(page.getByRole('heading', { name: /blackjack 3d/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /blackjack party/i })).toBeVisible()
     await page.getByRole('tab', { name: /local hot-seat/i }).click()
     await expect(page.getByRole('button', { name: /start local game/i })).toBeVisible()
 }

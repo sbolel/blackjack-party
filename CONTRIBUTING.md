@@ -1,6 +1,6 @@
-# Contributing to Blackjack 3D
+# Contributing to Blackjack Party
 
-Thanks for helping improve Blackjack 3D.
+Thanks for helping improve Blackjack Party.
 
 This project is a casual browser blackjack game. It does not support real-money gambling, wagering, payouts, or gambling-service integrations.
 
