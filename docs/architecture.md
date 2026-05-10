@@ -9,6 +9,7 @@ This note describes the current public-release shape of Blackjack Party. It is i
 - Spark KV supports online room state.
 - The UI presents a 3D-styled blackjack table experience.
 - Local hot-seat QA is covered by `npm run qa:local`.
+- The local QA harness stubs Spark runtime and KV requests, so hot-seat tests do not depend on live Spark authentication.
 
 ## Game Logic
 
@@ -27,6 +28,12 @@ For now:
 Online room state uses Spark KV. Treat multiplayer behavior as browser-game room state, not as a hardened authoritative server model.
 
 Public docs and pull requests should avoid claiming conflict handling or synchronization guarantees beyond what the code and Playwright QA validate.
+
+## Playwright and Spark
+
+`tests/e2e/local-hot-seat.spec.ts` installs route stubs for the Spark runtime and KV endpoints used by the local setup flow. This keeps local hot-seat QA deterministic and avoids requiring live Spark authentication for browser tests.
+
+When adding online-room Playwright coverage, add explicit stub behavior for the required Spark request shapes. Do not reintroduce broad console, network, or `Failed to fetch` allowlists that could hide unrelated runtime failures.
 
 ## Validation Commands
 

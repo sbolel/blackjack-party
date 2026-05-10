@@ -14,8 +14,23 @@ This repository is being stabilized for a first public release. The current play
 
 ## Quick Start
 
+Use Node 24, matching [`.nvmrc`](./.nvmrc):
+
+```sh
+nvm use
+```
+
+Install dependencies:
+
 ```sh
 npm install
+```
+
+For a clean CI-like install, use `npm ci` instead of `npm install`.
+
+Start the app locally:
+
+```sh
 npm run dev
 ```
 
@@ -39,6 +54,8 @@ npm run qa:local
 
 The Playwright config builds the app and serves it from `http://localhost:3000` by default. Override that with `HOST`, `PORT`, `PLAYWRIGHT_BASE_URL`, or `PLAYWRIGHT_CHANNEL` when needed.
 
+`npm run qa:local` stubs Spark runtime and KV requests inside `tests/e2e/local-hot-seat.spec.ts`, so the local hot-seat smoke test does not require live Spark authentication.
+
 ## Known Limitations
 
 - Requires the Spark runtime and Spark KV APIs for online room state.
@@ -46,6 +63,8 @@ The Playwright config builds the app and serves it from `http://localhost:3000` 
 - Full migration to the pure engine in `src/lib/engine.ts` is pending.
 - Multiplayer state conflict handling may need additional release hardening.
 - No real-money gambling, wagering, payouts, or gambling services are supported.
+- The package is marked `private: true`; release readiness currently means GitHub repository and Spark app readiness, not npm publishing.
+- Spark hosting, publish, and visibility settings are operator steps and should be verified before announcing a public app URL.
 
 ## Contributing
 
