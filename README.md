@@ -47,6 +47,12 @@ The Playwright config builds the app and serves it from `http://localhost:3000` 
 - Multiplayer state conflict handling may need additional release hardening.
 - No real-money gambling, wagering, payouts, or gambling services are supported.
 
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, validation, branch, commit, issue, and pull request guidance.
+
+Developer notes are in [docs/architecture.md](./docs/architecture.md). Release tracking notes are in [docs/release-readiness.md](./docs/release-readiness.md).
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).
