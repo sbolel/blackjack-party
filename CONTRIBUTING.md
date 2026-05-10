@@ -6,10 +6,22 @@ This project is a casual browser blackjack game. It does not support real-money 
 
 ## Local Setup
 
+Use Node 24, matching [`.nvmrc`](./.nvmrc):
+
+```sh
+nvm use
+```
+
 Install dependencies:
 
 ```sh
 npm install
+```
+
+For a clean install that mirrors CI, use:
+
+```sh
+npm ci
 ```
 
 Start the app locally:
@@ -42,6 +54,7 @@ npm run qa:local
 - Preserve the current playable flow in `src/App.tsx` unless the change is explicitly part of the engine migration.
 - Treat `src/lib/engine.ts` as the deferred pure-engine path until that migration is planned and validated.
 - Keep Spark KV online room behavior honest in docs and tests. Do not claim stronger multiplayer guarantees than the code validates.
+- Local Playwright QA stubs Spark runtime and KV requests in `tests/e2e/local-hot-seat.spec.ts`; future online-room tests should add explicit stub behavior instead of broad error allowlists.
 - Keep the project casual and browser-first. Do not add real-money gambling behavior.
 
 ## Branches and Commits
@@ -76,3 +89,5 @@ npm run qa:local
 ```
 
 If a command cannot be run locally, note that clearly in the pull request.
+
+Release readiness currently means GitHub repository and Spark app readiness. This package is not intended for npm publishing while `package.json` remains `private: true`.

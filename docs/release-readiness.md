@@ -14,7 +14,7 @@ Use this checklist for the first public open-source release and near-term stabil
 
 - `npm run validate` passes on the release branch.
 - `npm run qa:local` passes on the release branch.
-- Any CI workflow added in a separate lane runs the same documented validation commands.
+- `.github/workflows/release-validation.yml` runs the release gate in CI with Node from `.nvmrc`, `npm ci`, dependency audit, `npm run validate`, and local hot-seat Playwright QA.
 - Documentation-only changes have their changed Markdown inspected.
 
 ## Gameplay Scope
@@ -30,10 +30,12 @@ Use this checklist for the first public open-source release and near-term stabil
 - Call out known limitations directly.
 - Link to validation results when available.
 - Keep Spark runtime requirements visible.
+- Treat release as GitHub repository and Spark app readiness, not npm publishing, while `package.json` remains `private: true`.
+- Verify Spark hosted app publish and visibility settings before announcing a public app URL.
 
 ## Deferred Work
 
 - Full pure-engine migration.
 - Stronger multiplayer conflict handling.
 - Broader Playwright coverage beyond the local hot-seat smoke test.
-- Additional contributor automation after issue and pull request templates land.
+- README visual polish, screenshots, and live-app presentation details.
