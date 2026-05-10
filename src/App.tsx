@@ -676,7 +676,7 @@ function App() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Blackjack 3D
+                Blackjack Party
               </h1>
               {gameState.isOnline && (
                 <Badge variant="secondary" className="flex items-center gap-1">

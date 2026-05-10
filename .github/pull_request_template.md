@@ -1,6 +1,6 @@
 ## Summary
 
-- What does this change improve in blackjack-3d?
+- What does this change improve in blackjack-party?
 
 ## What changed
 

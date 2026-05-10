@@ -1,6 +1,6 @@
-# Blackjack 3D
+# Blackjack Party
 
-Blackjack 3D is a browser-based blackjack game with local and online play, Spark KV-backed room state, and a 3D-styled table UI.
+Blackjack Party is a browser-based blackjack game with local and online play, Spark KV-backed room state, and a 3D-styled table UI.
 
 This repository is being stabilized for a first public release. The current playable game flow lives primarily in `src/App.tsx`. A fuller pure-engine migration exists in `src/lib/engine.ts`, but that migration is deferred until it can be validated without disrupting the current playable path.
 

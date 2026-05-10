@@ -110,7 +110,7 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
         <div className="text-center space-y-6">
           <div>
             <h1 className="text-5xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Blackjack 3D
+              Blackjack Party
             </h1>
             <p className="text-muted-foreground text-lg">
               Experience casino blackjack with immersive 3D graphics
