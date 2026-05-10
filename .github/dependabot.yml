@@ -3,14 +3,136 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    versioning-strategy: "increase-if-necessary"
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+    cooldown:
+      semver-major-days: 14
+      semver-minor-days: 3
+      semver-patch-days: 1
+    groups:
+      spark-integrations:
+        patterns:
+          - "@github/spark"
+          - "@octokit/*"
+          - "octokit"
+        update-types:
+          - "minor"
+          - "patch"
+      react-ui-ecosystem:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+          - "@radix-ui/*"
+          - "@heroicons/react"
+          - "@phosphor-icons/react"
+          - "@hookform/resolvers"
+          - "class-variance-authority"
+          - "clsx"
+          - "cmdk"
+          - "embla-carousel-react"
+          - "framer-motion"
+          - "input-otp"
+          - "lucide-react"
+          - "next-themes"
+          - "react-day-picker"
+          - "react-error-boundary"
+          - "react-hook-form"
+          - "react-resizable-panels"
+          - "sonner"
+          - "tailwind-merge"
+          - "tw-animate-css"
+          - "vaul"
+        update-types:
+          - "minor"
+          - "patch"
+      visualization-data-runtime:
+        patterns:
+          - "d3"
+          - "date-fns"
+          - "marked"
+          - "recharts"
+          - "uuid"
+          - "zod"
+        update-types:
+          - "minor"
+          - "patch"
+      build-tooling:
+        patterns:
+          - "@eslint/js"
+          - "@tailwindcss/*"
+          - "@vitejs/*"
+          - "eslint"
+          - "eslint-plugin-*"
+          - "globals"
+          - "tailwindcss"
+          - "typescript"
+          - "typescript-eslint"
+          - "vite"
+        update-types:
+          - "minor"
+          - "patch"
+      test-tooling:
+        patterns:
+          - "@playwright/test"
+        update-types:
+          - "minor"
+          - "patch"
+      production-minor-patch:
+        dependency-type: "production"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      development-minor-patch:
+        dependency-type: "development"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "devcontainers"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "wednesday"
+      time: "08:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 1
+    commit-message:
+      prefix: "chore"
+      include: "scope"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "tuesday"
+      time: "08:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    cooldown:
+      semver-major-days: 14
+      semver-minor-days: 3
+      semver-patch-days: 1
+    groups:
+      github-actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
