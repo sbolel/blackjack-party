@@ -10,23 +10,106 @@ type PageDiagnostics = {
     attach: (testInfo: TestInfo) => Promise<void>
 }
 
-const knownSparkKvNoise =
-    /^Failed to (fetch KV key|set key): (Unauthorized|rate limit exceeded|too many requests)$/i
-const knownBrowserConsoleNoise =
-    /Failed to load resource: (the server responded with a status of (401 \(Unauthorized\)|403 \(rate limit exceeded\)|429 \(too many requests\)|404 \(Not Found\))|net::ERR_CONNECTION_REFUSED)/i
+type JsonValue =
+    | string
+    | number
+    | boolean
+    | null
+    | JsonValue[]
+    | { [key: string]: JsonValue }
 
-function isKnownPageError(error: string, browserConsoleErrors: string[]) {
-    if (knownSparkKvNoise.test(error)) {
-        return true
-    }
+function createSparkKvStore() {
+    return new Map<string, JsonValue>([
+        ['setup-game-mode', 'local'],
+        ['setup-num-players', '2'],
+        ['setup-player-names', ['Player 1', 'Player 2']],
+        ['setup-starting-chips', '500'],
+        ['setup-min-bet', '10'],
+        ['setup-room-name', ''],
+        ['setup-max-players', '4'],
+        ['setup-join-room-id', ''],
+        ['setup-join-player-name', ''],
+        ['blackjack-game', null],
+        ['current-player-id', ''],
+        ['bet-history', []],
+    ])
+}
 
-    return (
-        error === 'Failed to fetch' &&
-        browserConsoleErrors.length > 0 &&
-        browserConsoleErrors.every((consoleError) =>
-            knownBrowserConsoleNoise.test(consoleError),
-        )
-    )
+async function installSparkRuntimeStub(
+    page: Page,
+    unhandledSparkRequests: string[],
+) {
+    const kvStore = createSparkKvStore()
+
+    await page.route('**/_spark/**', async (route) => {
+        const request = route.request()
+        const url = new URL(request.url())
+
+        if (url.pathname === '/_spark/loaded') {
+            await route.fulfill({ status: 204 })
+            return
+        }
+
+        if (url.pathname === '/_spark/user') {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify(null),
+            })
+            return
+        }
+
+        if (url.pathname === '/_spark/kv' && request.method() === 'GET') {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([...kvStore.keys()]),
+            })
+            return
+        }
+
+        const key = url.pathname.match(/^\/_spark\/kv\/([^/]+)$/)?.[1]
+        if (key) {
+            const decodedKey = decodeURIComponent(key)
+
+            if (request.method() === 'GET') {
+                if (!kvStore.has(decodedKey)) {
+                    unhandledSparkRequests.push(`${request.method()} ${url.pathname}`)
+                    await route.fulfill({
+                        status: 501,
+                        body: 'Unhandled Spark KV key',
+                    })
+                    return
+                }
+
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'text/plain',
+                    body: JSON.stringify(kvStore.get(decodedKey)),
+                })
+                return
+            }
+
+            if (request.method() === 'POST') {
+                kvStore.set(decodedKey, JSON.parse(request.postData() ?? 'null'))
+                await route.fulfill({ status: 204 })
+                return
+            }
+
+            if (request.method() === 'DELETE') {
+                kvStore.delete(decodedKey)
+                await route.fulfill({ status: 204 })
+                return
+            }
+        }
+
+        unhandledSparkRequests.push(`${request.method()} ${url.pathname}`)
+        await route.fulfill({ status: 501, body: 'Unhandled Spark test route' })
+    })
+
+    await page.route('**/favicon.ico', async (route) => {
+        await route.fulfill({ status: 204 })
+    })
 }
 
 const test = base.extend<{ diagnostics: PageDiagnostics }>({
@@ -34,6 +117,11 @@ const test = base.extend<{ diagnostics: PageDiagnostics }>({
         async ({ page }, runTest, testInfo) => {
             const browserConsoleErrors: string[] = []
             const pageErrors: string[] = []
+            const failedRequests: string[] = []
+            const badResponses: string[] = []
+            const unhandledSparkRequests: string[] = []
+
+            await installSparkRuntimeStub(page, unhandledSparkRequests)
 
             page.on('console', (message) => {
                 if (message.type() === 'error') {
@@ -43,6 +131,28 @@ const test = base.extend<{ diagnostics: PageDiagnostics }>({
 
             page.on('pageerror', (error) => {
                 pageErrors.push(error.message)
+            })
+
+            page.on('requestfailed', (request) => {
+                const url = new URL(request.url())
+                if (
+                    url.pathname.startsWith('/_spark/') &&
+                    request.failure()?.errorText === 'net::ERR_ABORTED'
+                ) {
+                    return
+                }
+
+                failedRequests.push(
+                    `${request.method()} ${request.url()}: ${request.failure()?.errorText}`,
+                )
+            })
+
+            page.on('response', (response) => {
+                if (response.status() >= 400) {
+                    badResponses.push(
+                        `${response.request().method()} ${response.url()}: ${response.status()} ${response.statusText()}`,
+                    )
+                }
             })
 
             const diagnostics = {
@@ -59,19 +169,37 @@ const test = base.extend<{ diagnostics: PageDiagnostics }>({
                         body: pageErrors.length > 0 ? pageErrors.join('\n') : 'none',
                         contentType: 'text/plain',
                     })
+
+                    await testInfo.attach('failed-requests', {
+                        body:
+                            failedRequests.length > 0
+                                ? failedRequests.join('\n')
+                                : 'none',
+                        contentType: 'text/plain',
+                    })
+
+                    await testInfo.attach('bad-responses', {
+                        body:
+                            badResponses.length > 0
+                                ? badResponses.join('\n')
+                                : 'none',
+                        contentType: 'text/plain',
+                    })
+
+                    await testInfo.attach('unhandled-spark-requests', {
+                        body:
+                            unhandledSparkRequests.length > 0
+                                ? unhandledSparkRequests.join('\n')
+                                : 'none',
+                        contentType: 'text/plain',
+                    })
                 },
                 assertClean() {
-                    const unexpectedConsoleErrors = browserConsoleErrors.filter(
-                        (error) =>
-                            !knownSparkKvNoise.test(error) &&
-                            !knownBrowserConsoleNoise.test(error),
-                    )
-                    const unexpectedPageErrors = pageErrors.filter(
-                        (error) => !isKnownPageError(error, browserConsoleErrors),
-                    )
-
-                    expect(unexpectedConsoleErrors).toEqual([])
-                    expect(unexpectedPageErrors).toEqual([])
+                    expect(browserConsoleErrors).toEqual([])
+                    expect(pageErrors).toEqual([])
+                    expect(failedRequests).toEqual([])
+                    expect(badResponses).toEqual([])
+                    expect(unhandledSparkRequests).toEqual([])
                 },
             }
 
