@@ -1,0 +1,29 @@
+name: General issue
+description: Ask a blackjack-3d question or raise maintenance work that is not a bug, feature, or security report.
+title: "Issue: "
+labels: ["triage"]
+body:
+  - type: textarea
+    id: topic
+    attributes:
+      label: Topic
+      description: What should blackjack-3d maintainers know?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Link related issues, PRs, docs, or game flows if helpful.
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - Question
+        - Documentation
+        - Repository maintenance
+        - Release preparation
+        - Other
+    validations:
+      required: true
