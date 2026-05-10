@@ -11,9 +11,23 @@ type PageDiagnostics = {
 }
 
 const knownSparkKvNoise =
-    /^(Failed to (fetch KV key|set key): (Unauthorized|rate limit exceeded|too many requests)|Failed to fetch)$/i
+    /^Failed to (fetch KV key|set key): (Unauthorized|rate limit exceeded|too many requests)$/i
 const knownBrowserConsoleNoise =
-    /Failed to load resource: (the server responded with a status of (403 \(rate limit exceeded\)|429 \(too many requests\)|404 \(Not Found\))|net::ERR_CONNECTION_REFUSED)/i
+    /Failed to load resource: (the server responded with a status of (401 \(Unauthorized\)|403 \(rate limit exceeded\)|429 \(too many requests\)|404 \(Not Found\))|net::ERR_CONNECTION_REFUSED)/i
+
+function isKnownPageError(error: string, browserConsoleErrors: string[]) {
+    if (knownSparkKvNoise.test(error)) {
+        return true
+    }
+
+    return (
+        error === 'Failed to fetch' &&
+        browserConsoleErrors.length > 0 &&
+        browserConsoleErrors.every((consoleError) =>
+            knownBrowserConsoleNoise.test(consoleError),
+        )
+    )
+}
 
 const test = base.extend<{ diagnostics: PageDiagnostics }>({
     diagnostics: [
@@ -53,7 +67,7 @@ const test = base.extend<{ diagnostics: PageDiagnostics }>({
                             !knownBrowserConsoleNoise.test(error),
                     )
                     const unexpectedPageErrors = pageErrors.filter(
-                        (error) => !knownSparkKvNoise.test(error),
+                        (error) => !isKnownPageError(error, browserConsoleErrors),
                     )
 
                     expect(unexpectedConsoleErrors).toEqual([])
