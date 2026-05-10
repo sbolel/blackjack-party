@@ -8,7 +8,7 @@ body:
       value: |
         Do not publish active exploit details, private room data, tokens, or proof-of-concept code in a public issue.
 
-        If the issue appears actively exploitable, first check blackjack-3d's SECURITY.md and GitHub's private vulnerability reporting option if it is available. If no private intake is available, open a minimal public issue asking maintainers where to send details.
+        If the issue appears actively exploitable, first check blackjack-3d's SECURITY.md and GitHub's private vulnerability reporting option if it is available. If no private intake is available, contact the maintainer through the repository owner profile without posting exploit details publicly.
   - type: dropdown
     id: sensitivity
     attributes:

@@ -4,7 +4,7 @@
 
 ## What changed
 
-- 
+- List the main code, gameplay, documentation, or release-process changes.
 
 ## Validation
 
