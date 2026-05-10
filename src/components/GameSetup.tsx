@@ -65,14 +65,14 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
     window.addEventListener('resize', resizeCanvas)
 
     const discoColors = [
-      'rgba(255, 0, 255, 0.4)',
-      'rgba(0, 255, 255, 0.4)',
-      'rgba(255, 255, 0, 0.4)',
-      'rgba(255, 0, 0, 0.4)',
-      'rgba(0, 255, 0, 0.4)',
-      'rgba(0, 0, 255, 0.4)',
-      'rgba(255, 128, 0, 0.4)',
-      'rgba(128, 0, 255, 0.4)',
+      'rgba(64, 180, 120, 0.5)',
+      'rgba(228, 150, 90, 0.5)',
+      'rgba(205, 175, 75, 0.5)',
+      'rgba(40, 120, 200, 0.4)',
+      'rgba(64, 180, 120, 0.4)',
+      'rgba(228, 150, 90, 0.6)',
+      'rgba(205, 175, 75, 0.6)',
+      'rgba(80, 140, 100, 0.4)',
     ]
 
     lightsRef.current = Array.from({ length: 8 }, (_, i) => ({
