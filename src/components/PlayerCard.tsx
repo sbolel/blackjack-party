@@ -76,14 +76,27 @@ export function PlayerCard({ player, isActive, isDealer }: PlayerCardProps) {
 
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-sm">
-          <CurrencyDollar size={16} className="text-gold" weight="bold" />
-          <span className="font-mono font-bold">{player.chips}</span>
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gold text-gold-foreground font-black text-xs border-2 border-gold-foreground/30 shadow-lg"
+            style={{
+              boxShadow: 'inset 0 1px 4px rgba(255, 255, 255, 0.3), inset 0 -1px 4px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4)'
+            }}
+          >
+            <CurrencyDollar size={16} weight="bold" />
+          </div>
+          <span className="font-mono font-bold text-lg">{player.chips}</span>
           <span className="text-muted-foreground">chips</span>
         </div>
 
         {player.currentBet > 0 && (
-          <div className="text-sm text-muted-foreground">
-            Bet: <span className="font-mono font-semibold text-foreground">{player.currentBet}</span>
+          <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground font-black text-xs border-2 border-primary-foreground/30 shadow-lg"
+              style={{
+                boxShadow: 'inset 0 1px 4px rgba(255, 255, 255, 0.3), inset 0 -1px 4px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4)'
+              }}
+            >
+              {player.currentBet}
+            </div>
+            <span className="text-muted-foreground">bet</span>
           </div>
         )}
 

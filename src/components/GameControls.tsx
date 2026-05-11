@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
+import { ChipButton } from '@/components/ChipButton'
 import { Cards, HandPalm, Plus, Minus } from '@phosphor-icons/react'
 import { useState } from 'react'
 
@@ -40,6 +41,8 @@ export function GameControls({
   const confirmBet = () => {
     onBet(betAmount)
   }
+  
+  const quickBetAmounts = [minBet, minBet * 5, minBet * 10, minBet * 20]
 
   if (phase === 'betting') {
     return (
@@ -61,7 +64,18 @@ export function GameControls({
             className="w-full"
           />
           
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center justify-center pt-2">
+            {quickBetAmounts.filter(amt => amt <= availableChips).map((amount) => (
+              <ChipButton
+                key={amount}
+                value={amount}
+                onClick={() => setBetAmount(amount)}
+                color={betAmount === amount ? 'gold' : 'secondary'}
+              />
+            ))}
+          </div>
+          
+          <div className="flex gap-2 pt-2">
             <Button
               variant="outline"
               size="sm"
