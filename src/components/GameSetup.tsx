@@ -53,6 +53,100 @@ const minBetChipConfigs: ChipConfig[] = [
   { value: 50, color: 'text-destructive-foreground', bgColor: 'bg-destructive', borderColor: 'border-destructive-foreground' },
 ]
 
+interface PlayerSeatProps {
+  index: number
+  name: string
+  isEditing: boolean
+  onEdit: (index: number) => void
+  onStopEditing: () => void
+  onNameChange: (index: number, name: string) => void
+}
+
+function PlayerSeat({ index, name, isEditing, onEdit, onStopEditing, onNameChange }: PlayerSeatProps) {
+  const seatNumber = index + 1
+
+  return (
+    <div className="relative group">
+      <div className={cn(
+        "relative w-32 h-32 rounded-full border-4 transition-all duration-300",
+        "bg-gradient-to-br from-primary/40 to-primary/20",
+        "border-gold shadow-[0_0_20px_rgba(205,175,75,0.3)]",
+        "flex flex-col items-center justify-center",
+        isEditing && "ring-4 ring-gold/50 scale-105"
+      )}>
+        <div className="absolute -top-3 -left-3 w-10 h-10 rounded-full bg-gold text-gold-foreground flex items-center justify-center font-black text-sm border-2 border-gold-foreground/30 shadow-lg">
+          {seatNumber}
+        </div>
+
+        {!isEditing ? (
+          <button
+            onClick={() => onEdit(index)}
+            className="flex flex-col items-center justify-center gap-1 w-full h-full rounded-full hover:bg-primary/30 transition-colors"
+          >
+            <span className="text-foreground font-bold text-sm text-center px-2 line-clamp-2">
+              {name}
+            </span>
+            <Pencil size={16} className="text-gold opacity-60 group-hover:opacity-100 transition-opacity" weight="bold" />
+          </button>
+        ) : (
+          <Input
+            autoFocus
+            value={name}
+            onChange={(e) => onNameChange(index, e.target.value)}
+            onBlur={onStopEditing}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onStopEditing()
+            }}
+            className="w-24 h-10 text-center text-sm font-bold bg-card/90 border-gold"
+            maxLength={15}
+          />
+        )}
+      </div>
+
+      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-muted/80 rounded text-[10px] font-mono text-muted-foreground whitespace-nowrap">
+        SEAT {seatNumber}
+      </div>
+    </div>
+  )
+}
+
+interface ChipSelectorProps {
+  label: string
+  chips: ChipConfig[]
+  value: string
+  onChange: (value: string) => void
+}
+
+function ChipSelector({ label, chips, value, onChange }: ChipSelectorProps) {
+  return (
+    <div className="space-y-3">
+      <label className="text-sm font-bold text-gold uppercase tracking-wide">
+        {label}
+      </label>
+      <div className="flex gap-2 justify-center flex-wrap">
+        {chips.map((chip) => (
+          <button
+            key={chip.value}
+            onClick={() => onChange(chip.value.toString())}
+            className={cn(
+              "chip-button relative w-16 h-16 rounded-full font-black text-sm",
+              "transition-all duration-200 hover:scale-110",
+              chip.bgColor,
+              chip.color,
+              chip.borderColor,
+              value === chip.value.toString()
+                ? "scale-110 ring-4 ring-gold/50 shadow-[0_0_30px_rgba(205,175,75,0.6)]"
+                : "shadow-[0_0_15px_rgba(0,0,0,0.5)]"
+            )}
+          >
+            <span className="relative z-10">{chip.value}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSetupProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const lightsRef = useRef<DiscoLight[]>([])
@@ -214,95 +308,6 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
     onJoinOnline(joinRoomIdValue.trim().toUpperCase(), joinPlayerNameValue.trim())
   }
 
-  const PlayerSeat = ({ index, name }: { index: number; name: string }) => {
-    const isEditing = editingSeat === index
-    const seatNumber = index + 1
-    
-    return (
-      <div className="relative group">
-        <div className={cn(
-          "relative w-32 h-32 rounded-full border-4 transition-all duration-300",
-          "bg-gradient-to-br from-primary/40 to-primary/20",
-          "border-gold shadow-[0_0_20px_rgba(205,175,75,0.3)]",
-          "flex flex-col items-center justify-center",
-          isEditing && "ring-4 ring-gold/50 scale-105"
-        )}>
-          <div className="absolute -top-3 -left-3 w-10 h-10 rounded-full bg-gold text-gold-foreground flex items-center justify-center font-black text-sm border-2 border-gold-foreground/30 shadow-lg">
-            {seatNumber}
-          </div>
-          
-          {!isEditing ? (
-            <button
-              onClick={() => setEditingSeat(index)}
-              className="flex flex-col items-center justify-center gap-1 w-full h-full rounded-full hover:bg-primary/30 transition-colors"
-            >
-              <span className="text-foreground font-bold text-sm text-center px-2 line-clamp-2">
-                {name}
-              </span>
-              <Pencil size={16} className="text-gold opacity-60 group-hover:opacity-100 transition-opacity" weight="bold" />
-            </button>
-          ) : (
-            <Input
-              autoFocus
-              value={name}
-              onChange={(e) => updatePlayerName(index, e.target.value)}
-              onBlur={() => setEditingSeat(null)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') setEditingSeat(null)
-              }}
-              className="w-24 h-10 text-center text-sm font-bold bg-card/90 border-gold"
-              maxLength={15}
-            />
-          )}
-        </div>
-        
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-muted/80 rounded text-[10px] font-mono text-muted-foreground whitespace-nowrap">
-          SEAT {seatNumber}
-        </div>
-      </div>
-    )
-  }
-
-  const ChipSelector = ({ 
-    label, 
-    chips, 
-    value, 
-    onChange 
-  }: { 
-    label: string
-    chips: ChipConfig[]
-    value: string
-    onChange: (value: string) => void 
-  }) => {
-    return (
-      <div className="space-y-3">
-        <label className="text-sm font-bold text-gold uppercase tracking-wide">
-          {label}
-        </label>
-        <div className="flex gap-2 justify-center flex-wrap">
-          {chips.map((chip) => (
-            <button
-              key={chip.value}
-              onClick={() => onChange(chip.value.toString())}
-              className={cn(
-                "chip-button relative w-16 h-16 rounded-full font-black text-sm",
-                "transition-all duration-200 hover:scale-110",
-                chip.bgColor,
-                chip.color,
-                chip.borderColor,
-                value === chip.value.toString() 
-                  ? "scale-110 ring-4 ring-gold/50 shadow-[0_0_30px_rgba(205,175,75,0.6)]" 
-                  : "shadow-[0_0_15px_rgba(0,0,0,0.5)]"
-              )}
-            >
-              <span className="relative z-10">{chip.value}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
       <canvas
@@ -407,7 +412,15 @@ export function GameSetup({ onStartLocal, onCreateOnline, onJoinOnline }: GameSe
                       </label>
                       <div className="flex gap-6 justify-center flex-wrap">
                         {(playerNames || ['Player 1', 'Player 2']).map((name, index) => (
-                          <PlayerSeat key={index} index={index} name={name} />
+                          <PlayerSeat
+                            key={index}
+                            index={index}
+                            name={name}
+                            isEditing={editingSeat === index}
+                            onEdit={setEditingSeat}
+                            onStopEditing={() => setEditingSeat(null)}
+                            onNameChange={updatePlayerName}
+                          />
                         ))}
                       </div>
                     </div>
