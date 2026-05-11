@@ -214,14 +214,28 @@ const test = base.extend<{ diagnostics: PageDiagnostics }>({
 async function openLocalSetup(page: Page) {
     await page.goto('/')
 
-    await expect(page.getByRole('heading', { name: /blackjack party/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /blackjack/i })).toBeVisible()
+    await expect(page.getByText(/^Party$/i)).toBeVisible()
+    await expect(page.getByText(/experience casino blackjack/i)).toBeVisible()
     await page.getByRole('tab', { name: /local hot-seat/i }).click()
     await expect(page.getByRole('button', { name: /start local game/i })).toBeVisible()
 }
 
 async function selectPlayerCount(page: Page, count: 2 | 3 | 4) {
-    await page.getByRole('combobox').first().click()
-    await page.getByRole('option', { name: `${count} Players` }).click()
+    await page.getByRole('button', { name: count.toString(), exact: true }).click()
+}
+
+async function selectChipValue(page: Page, value: string) {
+    await page.getByRole('button', { name: value, exact: true }).click()
+}
+
+async function updatePlayerSeat(page: Page, currentName: string, newName: string) {
+    await page.getByRole('button', { name: new RegExp(currentName, 'i') }).click()
+    const editor = page.getByRole('textbox')
+    await expect(editor).toBeVisible()
+    await editor.fill(newName)
+    await editor.press('Enter')
+    await expect(page.getByRole('button', { name: new RegExp(newName, 'i') })).toBeVisible()
 }
 
 async function fillLocalSetup(
@@ -235,16 +249,12 @@ async function fillLocalSetup(
     const playerCount = config.playerNames.length as 2 | 3 | 4
     await selectPlayerCount(page, playerCount)
 
-    const playerNameFields = page.getByRole('textbox')
-    await expect(playerNameFields).toHaveCount(config.playerNames.length)
-
     for (const [index, name] of config.playerNames.entries()) {
-        await playerNameFields.nth(index).fill(name)
+        await updatePlayerSeat(page, `Player ${index + 1}`, name)
     }
 
-    const numberFields = page.getByRole('spinbutton')
-    await numberFields.nth(0).fill(config.startingChips ?? '500')
-    await numberFields.nth(1).fill(config.minBet ?? '10')
+    await selectChipValue(page, config.startingChips ?? '500')
+    await selectChipValue(page, config.minBet ?? '10')
 }
 
 async function startTwoPlayerLocalRound(page: Page) {
@@ -264,9 +274,10 @@ async function startTwoPlayerLocalRound(page: Page) {
 
 async function placeTwoMinimumBets(page: Page) {
     const confirmBet = page.getByRole('button', { name: /confirm bet/i })
+    const placedBetLabels = page.getByText(/^bet$/i)
 
     await confirmBet.click()
-    await expect(page.getByText(/bet:\s*10/i)).toBeVisible()
+    await expect(placedBetLabels).toHaveCount(1)
 
     await confirmBet.click()
     await expect(page.getByText(/your turn|dealer is playing|next round/i)).toBeVisible()
@@ -308,21 +319,26 @@ test('setup screen renders local controls and updates player configuration', asy
     await openLocalSetup(page)
 
     await selectPlayerCount(page, 3)
-    await expect(page.getByRole('textbox')).toHaveCount(3)
+    await expect(page.getByText('SEAT 3')).toBeVisible()
 
-    await page.getByRole('textbox').nth(0).fill('Ava')
-    await page.getByRole('textbox').nth(1).fill('Ben')
-    await page.getByRole('textbox').nth(2).fill('Cam')
+    await updatePlayerSeat(page, 'Player 1', 'Ava')
+    await updatePlayerSeat(page, 'Player 2', 'Ben')
+    await updatePlayerSeat(page, 'Player 3', 'Cam')
 
-    await page.getByRole('spinbutton').nth(0).fill('700')
-    await page.getByRole('spinbutton').nth(1).fill('20')
+    await selectChipValue(page, '1000')
+    await selectChipValue(page, '25')
 
     await selectPlayerCount(page, 2)
-    await expect(page.getByRole('textbox')).toHaveCount(2)
-    await expect(page.getByRole('textbox').nth(0)).toHaveValue('Ava')
-    await expect(page.getByRole('textbox').nth(1)).toHaveValue('Ben')
-    await expect(page.getByRole('spinbutton').nth(0)).toHaveValue('700')
-    await expect(page.getByRole('spinbutton').nth(1)).toHaveValue('20')
+    await expect(page.getByRole('button', { name: /Ava/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Ben/i })).toBeVisible()
+    await expect(page.getByText('SEAT 3')).toHaveCount(0)
+
+    await page.getByRole('button', { name: /start local game/i }).click()
+
+    await expect(page.getByText(/round 1/i)).toBeVisible()
+    await expect(page.getByText(/place your bet/i)).toBeVisible()
+    await expect(page.getByText(/1000\s*chips/i)).toHaveCount(2)
+    await expect(page.getByRole('button', { name: '25', exact: true })).toBeVisible()
 })
 
 test('starts a local hot-seat blackjack round and records two minimum bets', async ({
@@ -331,7 +347,7 @@ test('starts a local hot-seat blackjack round and records two minimum bets', asy
     await startTwoPlayerLocalRound(page)
     await placeTwoMinimumBets(page)
 
-    await expect(page.getByText(/bet:\s*10/i)).toHaveCount(2)
+    await expect(page.getByText(/^bet$/i)).toHaveCount(2)
 })
 
 test('advances through hit and stand actions into next-round reset', async ({
@@ -345,7 +361,7 @@ test('advances through hit and stand actions into next-round reset', async ({
 
     await expect(page.getByText(/round 2/i)).toBeVisible()
     await expect(page.getByText(/place your bet/i)).toBeVisible()
-    await expect(page.getByText(/bet:\s*10/i)).toHaveCount(0)
+    await expect(page.getByText(/^bet$/i)).toHaveCount(0)
 })
 
 test('renders the local setup on a mobile-sized viewport', async ({ page }) => {
@@ -353,5 +369,6 @@ test('renders the local setup on a mobile-sized viewport', async ({ page }) => {
     await openLocalSetup(page)
 
     await expect(page.getByRole('button', { name: /start local game/i })).toBeVisible()
-    await expect(page.getByRole('textbox')).toHaveCount(2)
+    await expect(page.getByText('SEAT 1')).toBeVisible()
+    await expect(page.getByText('SEAT 2')).toBeVisible()
 })
